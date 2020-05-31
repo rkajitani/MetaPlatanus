@@ -1,0 +1,195 @@
+Platanus2 README
+
+***** VERSION *****
+v2.0.0
+
+
+***** REQUIREMENTS *****
+
+GCC (version >= 4.4)
+OpenMP
+Minimap2 ("minimap2" command)
+
+
+***** INSTALLATION *****
+
+$ make
+$ cp platanus2 <installation_path>
+
+
+***** SYNOPSIS *****
+
+Phasing (Input: Illumina paired-ends and mate-pairs)
+--------------------------------------------------------------------------------
+$ platanus2 assemble -f PE_1.fq PE_2.fq 2>assemble.log
+$ platanus2 phase -c out_contig.fa out_junctionKmer.fa -IP1 PE_1.fq PE_2.fq -OP2 MP_1.fq MP_2.fq 2>phase.log
+
+FINAL OUTPUT:
+    out_allPhaseBlock.fa
+
+MISC. OUTPUT:
+    out_primaryBubble.fa
+    out_secondaryBubble.fa
+    out_nonBubbleHomoCandidate.fa
+    out_nonBubbleHetero.fa
+--------------------------------------------------------------------------------
+
+
+Constructing consensus (haplotype-mosaic) scaffolds (Input: Illumina paired-ends and mate-pairs)
+--------------------------------------------------------------------------------
+$ platanus2 consensus -c out_primaryBubble.fa out_nonBubbleHomoCandidate.fa -IP1 PE_1.fq PE_2.fq -OP2 MP_1.fq MP_2.fq 2>consensus.log
+
+FINAL OUTPUT:
+    out_consensusScaffolds.fa
+    out_consensusScaffoldComponent.bed
+--------------------------------------------------------------------------------
+
+
+Phasing (Input: Illumina paired-ends and PacBio long-reads) 
+--------------------------------------------------------------------------------
+$ platanus2 assemble -f PE_1.fq PE_2.fq 2>assemble.log
+$ platanus2 phase -c out_contig.fa out_junctionKmer.fa -IP1 PE_1.fq PE_2.fq -p PacBio.fq 2>phase.log
+--------------------------------------------------------------------------------
+
+
+Phasing (Input: 10X-Genomics linked-reads (barcoded paired-ends))
+--------------------------------------------------------------------------------
+$ platanus2 assemble -f 10X_PE.fq 2>assemble.log
+$ platanus2 phase -c out_contig.fa out_junctionKmer.fa -ip1 10X_PE.fq -x 10X_PE.fq 2>phase.log
+--------------------------------------------------------------------------------
+
+
+
+
+***** USAGE *****
+
+COMMON OPTIONS
+--------------------------------------------------------------------------------
+    -t INT    : Number of threads (<= 100, default 1)
+
+    -o STR    : Prefix of output files (default out, length <= 200)
+
+    -tmp DIR  : directory for temporary files (default . (working directory))
+--------------------------------------------------------------------------------
+
+
+
+
+platanus2 assemble [OPTIONS] 2>log
+--------------------------------------------------------------------------------
+OPTIONS:
+    -f FILE1 [FILE2 ...] : reads file (fasta or fastq, number <= 100)
+    -k INT               : initial k-mer size (default 32)
+    -K FLOAT             : maximum-k-mer factor (maximum-k = FLOAT*read-length, default  0.5)
+    -s INT               : step size of k-mer extension (>= 1, default 20)
+    -n INT               : initial k-mer coverage cutoff (default 0, 0 means auto)
+    -c INT               : minimun k-mer coverage (default 2)
+    -a FLOAT             : k-mer extension safety level (default 10.0)
+    -u FLOAT             : maximum difference for bubble crush (identity, default 0)
+    -d FLOAT             : maximum difference for branch cutting (coverage ratio, default 0.5)
+    -e FLOAT             : k-mer coverage depth (k = initial k-mer size specified by -k) of homozygous region (default auto)
+    -m INT               : memory limit for making kmer distribution (GB, >=1, default 16)
+
+OUTPUTS:
+    PREFIX_contig.fa
+    PREFIX_junctionKmer.fa
+    PREFIX_kmerFrq.tsv
+
+Note, PREFIX is specified by -o
+--------------------------------------------------------------------------------
+
+
+platanus2 phase [OPTIONS] 2>log
+--------------------------------------------------------------------------------
+OPTIONS:
+    -c FILE1 [FILE2 ...]               : contig (or scaffold) file (fasta format)
+    -ip{INT} PAIR1 [PAIR2 ...]         : lib_id inward_pair_file (interleaved file, fasta or fastq)
+    -IP{INT} FWD1 REV1 [FWD2 REV2 ...] : lib_id inward_pair_files (separate forward and reverse files, fasta or fastq)
+    -op{INT} PAIR1 [PAIR2 ...]         : lib_id outward_pair_file (interleaved, fasta or fastq)
+    -OP{INT} FWD1 REV1 [FWD2 REV2 ...] : lib_id outward_pair_files (separate forward and reverse files, fasta or fastq)
+    -p PAIR1 [PAIR2 ...]               : long-read file (PacBio, Nanopore) (fasta or fastq)
+    -x PAIR1 [PAIR2 ...]               : linked-reads files (paired-ends, 10x Genomics) (interleaved, fasta or fastq)
+    -X FWD1 REV1 [FWD2 REV2 ...]       : linked-reads files (paired-ends, 10x Genomics) (separate forward and reverse files, fasta or fastq)
+    -i INT                             : number of iterations (default 2)
+    -l INT                             : minimum number of links to scaffold (default 3)
+    -k INT                             : minimum number of links to phase variants (default 1)
+    -mapper FILE                       : path of mapper executable file (default minimap2, only effective with -p option)
+
+OUTPUTS:
+    PREFIX_allPhaseBlock.fa
+    PREFIX_primaryBubble.fa
+    PREFIX_secondaryBubble.fa
+    PREFIX_nonBubbleHomoCandidate.fa
+    PREFIX_nonBubbleHetero.fa
+    PREFIX_intermediateResults (directory)
+
+
+Note, PREFIX is specified by -o
+--------------------------------------------------------------------------------
+
+
+platanus2 phase [OPTIONS] 2>log
+--------------------------------------------------------------------------------
+OPTIONS:
+    -c FILE1 [FILE2 ...]               : contig (or scaffold) file (fasta format)
+    -ip{INT} PAIR1 [PAIR2 ...]         : lib_id inward_pair_file (interleaved file, fasta or fastq)
+    -IP{INT} FWD1 REV1 [FWD2 REV2 ...] : lib_id inward_pair_files (separate forward and reverse files, fasta or fastq)
+    -op{INT} PAIR1 [PAIR2 ...]         : lib_id outward_pair_file (interleaved, fasta or fastq)
+    -OP{INT} FWD1 REV1 [FWD2 REV2 ...] : lib_id outward_pair_files (separate forward and reverse files, fasta or fastq)
+    -p PAIR1 [PAIR2 ...]               : long-read file (PacBio, Nanopore) (fasta or fastq)
+    -x PAIR1 [PAIR2 ...]               : linked-reads files (paired-ends, 10x Genomics) (interleaved, fasta or fastq)
+    -X FWD1 REV1 [FWD2 REV2 ...]       : linked-reads files (paired-ends, 10x Genomics) (separate forward and reverse files, fasta or fastq)
+    -i INT                             : number of iterations (default 2)
+    -l INT                             : minimum number of links to scaffold (default 3)
+    -k INT                             : minimum number of links to phase variants (default 1)
+    -mapper FILE                       : path of mapper executable file (default minimap2, only effective with -p option)
+
+OUTPUTS:
+    PREFIX_allPhaseBlock.fa
+    PREFIX_primaryBubble.fa
+    PREFIX_secondaryBubble.fa
+    PREFIX_nonBubbleHomoCandidate.fa
+    PREFIX_nonBubbleHetero.fa
+    PREFIX_intermediateResults (directory)
+
+
+Note, PREFIX is specified by -o
+--------------------------------------------------------------------------------
+
+
+
+platanus2 consensus [OPTIONS] 2>log
+--------------------------------------------------------------------------------
+OPTIONS:
+    -o STR                             : prefix of output file (default out, length <= 200)
+    -c FILE1 [FILE2 ...]               : contig_file (fasta format)
+    -ip{INT} PAIR1 [PAIR2 ...]         : lib_id inward_pair_file (interleaved file, fasta or fastq)
+    -IP{INT} FWD1 REV1 [FWD2 REV2 ...] : lib_id inward_pair_files (separate forward and reverse files, fasta or fastq)
+    -op{INT} PAIR1 [PAIR2 ...]         : lib_id outward_pair_file (interleaved, fasta or fastq)
+    -OP{INT} FWD1 REV1 [FWD2 REV2 ...] : lib_id outward_pair_files (separate forward and reverse files, fasta or fastq)
+    -p PAIR1 [PAIR2 ...]               : long-read file (PacBio, Nanopore) (fasta or fastq)
+    -x PAIR1 [PAIR2 ...]               : linked-reads files (paired-ends, 10x Genomics) (interleaved, fasta or fastq)
+    -X FWD1 REV1 [FWD2 REV2 ...]       : linked-reads files (paired-ends, 10x Genomics) (separate forward and reverse files, fasta or fastq)
+    -e FLOAT                           : coverage depth of homozygous region (default auto)
+    -L INT                             : maximum fragment length of tag (10x Genomics) (default 200000)
+    -s INT1 [INT2 ...]                 : mapping seed length for short reads (default 32 64)
+    -S INT1 [INT2 ...]                 : mapping seed length for long reads (default 20, only effective with -kmer_align option)
+    -l INT                             : minimum number of links to scaffold (default 3)
+    -t INT                             : number of threads (<= 1, default 1)
+    -mapper FILE                       : path of mapper executable file (default, minimap, only effective with -p option)
+    -minimap2                          : use minimap2 insterd of minimap (default) for alignment of long reads
+    -tmp DIR                           : directory for temporary files (default .)
+
+OUTPUTS:
+    PREFIX_consensusScaffold.fa
+    PREFIX_consensusScaffoldComponent.bed
+
+Note, PREFIX is specified by -o
+--------------------------------------------------------------------------------
+
+
+
+
+***** AUTHOR *****
+Rei Kajitani at the Tokyo Institute of Technology wrote key source codes.
+<platanus@bio.titech.ac.jp>

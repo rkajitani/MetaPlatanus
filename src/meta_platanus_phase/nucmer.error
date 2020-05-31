@@ -1,0 +1,4 @@
+20170723|085608|103205| ERROR: The following critical files could not be used
+20170723|085608|103205| /data/kajitani/dev/Platanus2/test_MG1655/assembly_Illumina_PacBio/test_170720/src/PB_primaryBubble.fa
+20170723|085608|103205| /data/kajitani/dev/Platanus2/test_MG1655/assembly_Illumina_PacBio/test_170720/src/ref1.fa
+20170723|085608|103205| Check your paths and file permissions and try again
