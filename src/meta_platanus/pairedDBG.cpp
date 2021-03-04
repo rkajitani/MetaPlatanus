@@ -7025,3 +7025,73 @@ void PairedDBG::markRedundantResultSeq(const long numThread, const bool clusterI
 				resultSeq[seqIndex].redundantFlag = true;
 	}
 }
+
+
+void PairedDBG::divideChimericClusterNode()
+{
+    cerr << "dividing chimeric-cluster scaffolds..." << endl;
+
+    long numNewNode = 0;
+    long newContigPoolSize = 0;
+    FILE *scaffoldFP = platanus::makeTemporaryFile();
+
+	vector<long> numContigUsed(this->numContig, 0);
+
+	for (unsigned long nodeIndex = 0; nodeIndex < this->node.size(); ++nodeIndex) {
+		if (this->node[nodeIndex].state & SC_DEL)
+			continue;
+
+		long i;
+		vector<ScaffoldPart> &contigRef = this->node[nodeIndex].contig;
+
+		vector<char> breakpointFlag(contigRef.size() + 1, 0);
+		breakpointFlag.back() = 1;
+
+		long preClusterID = clusterID[id2Index(contigRef[0].id)];
+		long preEnd = 1;
+		for (i = 1; i < static_cast<long>(contigRef.size()); ++i) {
+			if(clusterID[id2Index(contigRef[i].id)] != 0) {
+				if (clusterID[id2Index(contigRef[i].id)] != preClusterID) {
+					breakpointFlag[preEnd] = 1;
+					breakpointFlag[i] = 1;
+				}
+				preClusterID = clusterID[id2Index(contigRef[i].id)];
+				preEnd = i + 1;
+			}
+		}
+
+		i = 0;
+		while (i < static_cast<long>(contigRef.size())) {
+			long start = contigRef[i].start;
+			long j = i;
+			while (breakpointFlag[i + 1] == 0) {
+				contigRef[i].start -= start;
+				contigRef[i].end -= start;
+				++i;
+			}
+			contigRef[i].start -= start;
+			contigRef[i].end -= start;
+			++i;
+
+			bool uniqueFlag = false;
+			for (long k = j; k < i; ++k) {
+				if (numContigUsed[id2Index(contigRef[k].id)] == 0)
+					uniqueFlag = true;
+			}
+
+			if (uniqueFlag) {
+				long k = i - j;
+				++numNewNode;
+				newContigPoolSize += k;
+				fwrite(&k, sizeof(long), 1, scaffoldFP);
+				for (k = j; k < i; ++k) {
+					fwrite(&(contigRef[k]), sizeof(ScaffoldPart), 1, scaffoldFP);
+					++numContigUsed[id2Index(contigRef[k].id)];
+				}
+			}
+		}
+	}
+
+    this->remake(numNewNode, newContigPoolSize, scaffoldFP);
+    fclose(scaffoldFP);
+}

@@ -324,6 +324,7 @@ public:
 	void estimateTaggedMoleculeLength(const long numThread);
 	virtual void dumpAllEdges(const std::string &outputFilename);
 	long deleteConflictingEdgeToSameNode(const long numThread);
+	void divideChimericClusterNode();
 
     long getTolerence(void) const { return tolerence; }
     long getNumNode(void) const { return numNode; }

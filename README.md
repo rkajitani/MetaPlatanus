@@ -10,7 +10,7 @@ MetaPlatanus is a de novo assembler for metagenome (microbiome). The features of
 
 
 ## Version
-v1.2.2
+v1.2.3
 
 ## Web site
 <http://platanus.bio.titech.ac.jp/>

@@ -78,7 +78,7 @@ Consensus::Consensus()
 void Consensus::usage(void) const
 {
 
-    std::cerr << "\nUsage: platanus2 consensus [Options]\n"
+    std::cerr << "\nUsage: meta_platanus consensus [Options]\n"
               << "Options:\n"
               << "    -o STR                             : prefix of output file (default " << optionSingleArgs.at("-o") << ", length <= " << platanus::ConstParam::MAX_FILE_LEN << ")\n"
               << "    -c FILE1 [FILE2 ...]               : contig_file (fasta format)\n"
@@ -120,7 +120,7 @@ void Consensus::exec(void)
 {
 	platanus::setGlobalTmpFileDir(optionSingleArgs["-tmp"].c_str());
 
-	std::cerr << "ececuting platanus2 solve_DBG internally ..." << std::endl;
+	std::cerr << "ececuting meta_platanus solve_DBG internally ..." << std::endl;
 	this->execSolveDBG();
 	std::cerr << "phase completed!" << std::endl;
 }

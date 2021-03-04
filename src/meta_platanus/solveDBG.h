@@ -71,36 +71,44 @@ private:
             while (optInd < argc) {
                 if (strstr(argv[optInd], "-n") == argv[optInd]) {
                     int pairNum = divideArgvInt(argv[optInd]);
-                    if (pairNum == 0) {
-                        return false;
+                    if (pairNum > 0) {
+						int minInsertSize = atoi(argv[optInd + 1]);
+						optionMinIns[pairNum] = minInsertSize;
+						optInd += 2;
                     }
-                    int minInsertSize = atoi(argv[optInd + 1]);
-                    optionMinIns[pairNum] = minInsertSize;
-                    optInd += 2;
+					else {
+						++optInd;
+					}
                 } else if (strstr(argv[optInd], "-a") == argv[optInd]) {
                     int pairNum = divideArgvInt(argv[optInd]);
-                    if (pairNum == 0) {
-                        return false;
-                    }
-                    int minInsertSize = atoi(argv[optInd + 1]);
-                    optionAveIns[pairNum] = minInsertSize;
-                    optInd += 2;
+                    if (pairNum > 0) {
+						int minInsertSize = atoi(argv[optInd + 1]);
+						optionAveIns[pairNum] = minInsertSize;
+						optInd += 2;
+					}
+					else {
+						++optInd;
+					}
                 } else if (strstr(argv[optInd], "-d") == argv[optInd]) {
                     int pairNum = divideArgvInt(argv[optInd]);
-                    if (pairNum == 0) {
-                        return false;
+                    if (pairNum > 0) {
+						int minInsertSize = atoi(argv[optInd + 1]);
+						optionSDIns[pairNum] = minInsertSize;
+						optInd += 2;
                     }
-                    int minInsertSize = atoi(argv[optInd + 1]);
-                    optionSDIns[pairNum] = minInsertSize;
-                    optInd += 2;
+					else {
+						++optInd;
+					}
                 } else if (strstr(argv[optInd], "-z") == argv[optInd]) {
                     int pairNum = divideArgvInt(argv[optInd]);
-                    if (pairNum == 0) {
-                        return false;
-                    }
-                    double insCutoffRate = atof(argv[optInd + 1]);
-                    optionInsCutoffRate[pairNum] = insCutoffRate;
-                    optInd += 2;
+                    if (pairNum > 0) {
+						double insCutoffRate = atof(argv[optInd + 1]);
+						optionInsCutoffRate[pairNum] = insCutoffRate;
+						optInd += 2;
+					}
+					else {
+						++optInd;
+					}
                 } else {
                     ++optInd;
                 }

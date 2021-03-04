@@ -66,7 +66,7 @@ Phase::Phase()
 void Phase::usage(void) const
 {
 
-    std::cerr << "\nUsage: platanus2 phase [Options]\n"
+    std::cerr << "\nUsage: meta_platanus phase [Options]\n"
               << "Options:\n"
               << "    -o STR                             : prefix of output file and directory (do not use \"/\", default " << optionSingleArgs.at("-o") << ", length <= " << platanus::ConstParam::MAX_FILE_LEN << ")\n"
               << "    -c FILE1 [FILE2 ...]               : contig (or scaffold) file (fasta format)\n"

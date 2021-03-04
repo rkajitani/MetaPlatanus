@@ -188,37 +188,37 @@ namespace platanus
 
     struct ScaffoldError : public ErrorBase
     {
-        ScaffoldError(): ErrorBase(SCAF, "Error, Scaffold exception!!\nplatanus2 scaffold command failed.") {}
+        ScaffoldError(): ErrorBase(SCAF, "Error, Scaffold exception!!\nmeta_platanus scaffold command failed.") {}
         ~ScaffoldError() {}
     };
 
     struct SolveDBGError : public ErrorBase
     {
-        SolveDBGError(): ErrorBase(SOLVE, "Error, SolveDBG exception!!\nplatanus2 solve_DBG command failed.") {}
+        SolveDBGError(): ErrorBase(SOLVE, "Error, SolveDBG exception!!\nmeta_platanus solve_DBG command failed.") {}
         ~SolveDBGError() {}
     };
 
     struct PolishError : public ErrorBase
     {
-        PolishError(): ErrorBase(SCAF, "Error, Polish exception!!\nplatanus2 polish command failed.") {}
+        PolishError(): ErrorBase(SCAF, "Error, Polish exception!!\nmeta_platanus polish command failed.") {}
         ~PolishError() {}
     };
 
     struct GapError : public ErrorBase
     {
-        GapError(): ErrorBase(GAP, "Error, Gap_close exception!!\nplatanus2 gap_close command failed.") {}
+        GapError(): ErrorBase(GAP, "Error, Gap_close exception!!\nmeta_platanus gap_close command failed.") {}
         ~GapError() {}
     };
 
     struct DivideError : public ErrorBase
     {
-        DivideError(): ErrorBase(DIV, "Divide exception!!\nplatanus divide cannot finished correctly") {}
+        DivideError(): ErrorBase(DIV, "Divide exception!!\nmeta_platanus divide cannot finished correctly") {}
         ~DivideError() {}
     };
 
     struct MergeError : public ErrorBase
     {
-        MergeError(): ErrorBase(MERGE, "Error, Merge exception!!\nplatanus2 merge command failed.") {}
+        MergeError(): ErrorBase(MERGE, "Error, Merge exception!!\nmeta_platanus merge command failed.") {}
         ~MergeError() {}
     };
 
@@ -416,7 +416,9 @@ namespace platanus
         inline void writeTemporaryFile(FILE *seqFile) const
         {
             fwrite(&numUnknown, sizeof(int), 1, seqFile);
-            fwrite(&positionUnknown[0], sizeof(int), numUnknown, seqFile);
+			if (numUnknown > 0)
+				fwrite(&positionUnknown[0], sizeof(int), numUnknown, seqFile);
+
             fwrite(&length, sizeof(int), 1, seqFile);
             fwrite(&base[0], sizeof(char), length, seqFile);
         }
@@ -427,7 +429,8 @@ namespace platanus
             if (fread(&numUnknown, sizeof(int), 1, seqFile) != 1)
                 return 0;
             positionUnknown.resize(numUnknown);
-            fread(&positionUnknown[0], sizeof(int), numUnknown, seqFile);
+			if (numUnknown > 0)
+				fread(&positionUnknown[0], sizeof(int), numUnknown, seqFile);
 
             fread(&length, sizeof(int), 1, seqFile);
             base.resize(length);
@@ -466,9 +469,10 @@ namespace platanus
 
         void show(void) const
         {
-            for (unsigned l = 0; l < length; ++l)
+            for (unsigned l = 0; l < length; ++l) {
                 std::cout << platanus::Bin2Char(base[l]);
                 std::cout << std::endl;
+			}
         }
     };
 

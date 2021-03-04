@@ -221,7 +221,6 @@ void IterateScaffold::execScaffoldMode(const unsigned long times, const std::str
         << " -tmp " << optionSingleArgs["-tmp"]
         << " -k " << optionSingleArgs["-k"]
         << " -c " << this->directoryName << "/" << optionSingleArgs["-o"] << DIV_FOOTER
-//        << " -c " << this->directoryName << "/" << optionSingleArgs["-o"] << CONTIG_FOOTER
         << " -o " << this->directoryName << "/" << optionSingleArgs["-o"]
         << " " << mode;
 

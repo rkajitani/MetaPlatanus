@@ -118,7 +118,7 @@ SolveDBG::SolveDBG()
 //////////////////////////////////////////////////////////////////////////////////////
 void SolveDBG::usage(void) const
 {
-    std::cerr << "\nUsage: platanus2 solveDBG [Options]\n"
+    std::cerr << "\nUsage: meta_platanus solveDBG [Options]\n"
               << "Options:\n"
               << "    -o STR                             : prefix of output file (default " << optionSingleArgs.at("-o") << ", length <= " << platanus::ConstParam::MAX_FILE_LEN << ")\n"
               << "    -c FILE1 [FILE2 ...]               : contig_file (fasta format)\n"
@@ -192,7 +192,7 @@ void SolveDBG::initializeParameters(void)
     for (unsigned i = 0; i < optionPairFile.size(); ++i) {
         ++(numFilePerLibraryID[numLibrary]);
         libraryIDList[numLibrary] = optionPairFile[i].libraryID;
-        if (optionPairFile[i].libraryID != optionPairFile[i + 1].libraryID) {
+        if (i + 1 >= optionPairFile.size() || optionPairFile[i].libraryID != optionPairFile[i + 1].libraryID) {
             ++numLibrary;
         }
     }
@@ -445,6 +445,8 @@ void SolveDBG::exec(void)
 			}
 		}
 
+		if (clusterFlag)
+			pairedDBG.divideChimericClusterNode();
 
 		pairedDBG.setMode(PairedDBG::OVERLAP_MODE | PairedDBG::PAIRED_END_LINK_MODE | PairedDBG::LONG_READ_LINK_MODE);
 		pairedDBG.solveUniquePathBetweenLinkedNodePairAllLibrariesIterative(numThread);
@@ -681,6 +683,9 @@ void SolveDBG::exec(void)
 			pairedDBG.divideGappedNode((outerIteration + 1) * this->contigMaxK);
 		}
 	}
+
+	if (clusterFlag)
+		pairedDBG.divideChimericClusterNode();
 
 	pairedDBG.divideBubbleContigInNonHeteroNode();
 
@@ -1430,6 +1435,9 @@ void SolveDBG::extendConsensus(const bool bubbleRemovalFlag, const bool insertEs
 		}
 	}
 
+	if (clusterFlag)
+		pairedDBG.divideChimericClusterNode();
+
 	pairedDBG.trimSparseEnd();
 
 
@@ -1609,6 +1617,8 @@ void SolveDBG::extendConsensus(const bool bubbleRemovalFlag, const bool insertEs
 		}
 	}
 
+	if (clusterFlag)
+		pairedDBG.divideChimericClusterNode();
 
 	pairedDBG.setMinOverlap(this->contigMaxK - 1);
 

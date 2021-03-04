@@ -68,6 +68,7 @@ Assemble::Assemble()
     optionMultiArgs["-f"] = vector<string>();
     optionSingleArgs["-tmp"] = ".";
     optionBool["-repeat"] = false;
+    optionBool["-kmer_count"] = false;
 }
 
 
@@ -77,7 +78,7 @@ Assemble::Assemble()
 //////////////////////////////////////////////////////////////////////////////////////
 void Assemble::usage(void) const
 {
-    std::cerr << "\nUsage meta_platanus2 assemble [Options]\n"
+    std::cerr << "\nUsage meta_platanus assemble [Options]\n"
               << "Options:\n"
               << "    -o STR               : prefix of output files (default " << optionSingleArgs.at("-o") << ", length <= " << platanus::ConstParam::MAX_FILE_LEN << ")\n"
               << "    -f FILE1 [FILE2 ...] : reads file (fasta or fastq, number <= "<< platanus::ConstParam::MAX_FILE_NUM << ")\n"
@@ -92,11 +93,13 @@ void Assemble::usage(void) const
               << "    -t INT               : number of threads (<= " << platanus::ConstParam::MAX_THREAD << ", default " << optionSingleArgs.at("-t") << ")\n"
               << "    -m INT               : memory limit for making kmer distribution (GB, >=1, default " << optionSingleArgs.at("-m") << ")\n"
               << "    -tmp DIR             : directory for temporary files (default " << optionSingleArgs.at("-tmp") << ")\n"
+              << "    -kmer_count          : only count k-mers and output PREFIX_kmer_occ.bin (default off)\n"
               << "\n\n"
               << "Outputs:\n"
               << "    PREFIX_contig.fa\n"
               << "    PREFIX_junctionKmer.fa\n"
               << "    PREFIX_kmerFrq.tsv\n"
+              << "    PREFIX_kmer_occ.bin\n"
               << "\n"
               << "Note, PREFIX is specified by -o\n"
               << std::endl;
@@ -163,6 +166,11 @@ void Assemble::exec(void)
         initialKmerAssemble(k, readFP, allReadFP, numThread, kmer159Graph, kmer159Counter);
     else
         initialKmerAssemble(k, readFP, allReadFP, numThread, kmerNGraph, kmerNCounter);
+
+    if (optionBool["-kmer_count"]) {
+		cerr << "assemble (k-mer counting only) completed!" << endl;
+		return;
+	}
 
     // kmer extension and assemble iterative
     for (unsigned i = 1; i < numKmer; ++i) {
@@ -253,6 +261,8 @@ void Assemble::initialKmerAssemble(vector<unsigned> &k, FILE **readFP, FILE **al
     sortedKeyFP = counter.sortedKeyFromKmerFile(this->lowerCoverageCutoff);
     this->doubleHashSize = counter.loadKmer(this->lowerCoverageCutoff, this->doubleHashSize);
     counter.outputOccurrenceTableBinary(this->tableBinaryName);
+    if (optionBool["-kmer_count"])
+		return;
 
     // make bruijn graph
     graph.makeInitialBruijnGraph(counter, sortedKeyFP);

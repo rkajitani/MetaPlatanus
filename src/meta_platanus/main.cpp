@@ -41,7 +41,7 @@ using std::endl;
 //////////////////////////////////////////////////////////////////////////////////////
 void Usage(void)
 {
-    cerr << "Usage: meta_platanus2 Command [options]" << endl
+    cerr << "Usage: meta_platanus Command [options]" << endl
 		<< "    Main commands: assemble, iterate, cluster_scaffold, cluster_fill" << endl
 		<< "    Internal commands: gap_close, divide, merge, cluster" << endl;
 }

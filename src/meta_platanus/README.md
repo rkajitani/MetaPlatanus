@@ -2,7 +2,7 @@
 
 
 ## Version
-v1.2.1
+v1.2.3
 
 ## Web site
 <http://platanus.bio.titech.ac.jp/>
@@ -26,7 +26,7 @@ Address for this tool: <platanus@bio.titech.ac.jp>
 ## Installation
 ```sh
 make
-cp platanus_b <installation_path>
+cp meta_platanus <installation_path>
 ```
 
 

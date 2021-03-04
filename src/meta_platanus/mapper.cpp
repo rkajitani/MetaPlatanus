@@ -447,6 +447,9 @@ platanus::Position Mapper::mapRead(const platanus::SEQ &read, vector<platanus::P
 void Mapper::mapReadMultiReports(const platanus::SEQ &read, vector<platanus::Position> &positionBuffer, const long wordLength, const long minContigLength)
 {
 	positionBuffer.clear();
+	if (read.length < wordLength)
+		return;
+
     long numResult = 0;
     // vector<platanus::Position> result(platanus::ConstParam::MAX_READ_LEN);
     vector<platanus::Position> result(read.length/wordLength + 2);
