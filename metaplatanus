@@ -1,0 +1,847 @@
+#!/usr/bin/perl
+
+use strict;
+use File::Spec;
+use FindBin;
+use Getopt::Long qw/:config posix_default no_ignore_case/;
+
+my $version = 'v1.3.0';
+
+printf STDERR ("metaplatanus version %s\n\n", $version, "\n");
+cons_asm_main(@ARGV);
+exit(0);
+
+
+sub cons_asm_main
+{
+	my @argv = @_;
+
+	my $version_flag = 0;
+	my $help_flag = 0;
+	my $overwrite_flag = 0;
+	my $no_tgsgapcloser_flag = 0;
+	my $no_nextpolish_flag = 0;
+
+	my $sub_bin = ($FindBin::Bin . '/sub_bin');
+	my $mem = get_mem_total() * 0.75;
+	my $out = 'out';
+	my $n_thread = 1;
+	my $tmp_dir = '.';
+
+	my $min_cov_contig  = 2;
+	my @lib_file;
+	my @lib_direction;
+	my @binning_lib_file;
+	my @pac_file = ();
+	my @ont_file = ();
+	my @tenx_file_interleaved = ();
+	my @tenx_file_paired = ();
+
+	my %opt_fmt = (
+		'v' => \$version_flag,
+		'version' => \$version_flag,
+		'h' => \$help_flag,
+		'help' => \$help_flag,
+		'overwrite' => \$overwrite_flag,
+		'no_tgsgapcloser' => \$no_tgsgapcloser_flag,
+		'no_nextpolish' => \$no_nextpolish_flag,
+
+		'm=i' => \$mem,
+		'o=s' => \$out,
+		't=i' => \$n_thread,
+		'tmp=s' => \$tmp_dir,
+		'sub_bin=s' => \$sub_bin,
+
+		'min_cov_contig=i' => \$min_cov_contig,
+		'p=s{1,}' => \@pac_file,
+		'ont=s{1,}' => \@ont_file,
+		'x=s{1,}' => \@tenx_file_interleaved,
+		'X=s{1,}' => \@tenx_file_paired,
+	);
+
+	for my $arg (@argv) {
+		if ($arg =~ /-([IO])P(\d+)/) {
+			my $lib_i = $2 - 1;
+			$lib_file[$lib_i] = [];
+			if (defined($lib_direction[$lib_i]) and $lib_direction[$lib_i] ne $1) {
+				die(sprintf("Error: Confliction of directions of short-reads libraries (%s).\n", $arg));
+			}
+			$lib_direction[$lib_i] = $1;
+			$opt_fmt{sprintf('%sP%s=s{1,}', $lib_direction[$lib_i], $lib_i + 1)} = $lib_file[$lib_i];
+		}
+		elsif ($arg =~ /-binning_IP(\d+)/) {
+			my $lib_i = $1 - 1;
+			$binning_lib_file[$lib_i] = [];
+			$opt_fmt{sprintf('binning_IP%s=s{1,}', $lib_i + 1)} = $binning_lib_file[$lib_i];
+		}
+	}
+
+	GetOptions(%opt_fmt);
+
+	$sub_bin = File::Spec->rel2abs($sub_bin);
+	$ENV{"PATH"} = ($sub_bin . ':' . $ENV{"PATH"});
+
+	sub_command_check(
+		'metaplatanus_core',
+		'reform_fasta.pl',
+		'fasta_cluster_tsv.pl',
+		'fasta_split_cluster.pl',
+		'renumber_metabat2_bin.pl',
+		'minimap2 -h',
+		'samtools help',
+		'seqkit',
+		'which bwa',
+		'metabat2 -h',
+		'jgi_summarize_bam_contig_depths',
+	);
+	if (not $no_tgsgapcloser_flag) {
+		sub_command_check('tgsgapcloser_mod');
+	}
+	if (not $no_nextpolish_flag) {
+		sub_command_check('nextPolish -h');
+	}
+
+	if ($version_flag) {
+		return;
+	}
+
+	if (@argv == 0 or $help_flag) {
+		print_cons_asm_usage();
+		return;
+	}
+
+	my $int_dir = sprintf("%s_intermediate", $out);
+	mkdir($int_dir);
+	(-d $int_dir) or die(sprintf("Error: can not make %s (directory).\n$!", $int_dir));
+
+	for (my $i = 0; $i < @lib_file; ++$i) {
+		rel2abs_multi($lib_file[$i]);
+	}
+	for (my $i = 0; $i < @binning_lib_file; ++$i) {
+		rel2abs_multi($binning_lib_file[$i]);
+	}
+	rel2abs_multi(\@pac_file);
+	rel2abs_multi(\@ont_file);
+	rel2abs_multi(\@tenx_file_interleaved);
+	rel2abs_multi(\@tenx_file_paired);
+
+	my $n_step = 1;
+	my $contig_asm_dir = sprintf("%s/%d_contig_asm", $int_dir, $n_step);
+	if ($overwrite_flag or not(-e "$contig_asm_dir/done")) {
+		contig_asm(
+			$contig_asm_dir,
+			$min_cov_contig,
+			$n_thread,
+			$mem,
+			$tmp_dir,
+			$out,
+			\@lib_file,
+			\@lib_direction,
+		);
+	}
+
+	++$n_step;
+	my $iterative_asm_dir = sprintf("%s/%d_iterative_asm", $int_dir, $n_step);
+	if ($overwrite_flag or not(-e "$iterative_asm_dir/done")) {
+		iterative_asm(
+			$iterative_asm_dir,
+			$contig_asm_dir,
+			$n_thread,
+			$mem,
+			$tmp_dir,
+			$out,
+			\@lib_file,
+			\@lib_direction,
+			\@pac_file,
+			\@ont_file,
+			\@tenx_file_paired,
+			\@tenx_file_interleaved,
+		);
+	}
+
+	++$n_step;
+	my $binning_dir = sprintf("%s/%d_binning", $int_dir, $n_step);
+	if ($overwrite_flag or not(-e "$binning_dir/done")) {
+		binning_metabat(
+			$binning_dir,
+			$iterative_asm_dir,
+			$n_thread,
+			$mem,
+			$tmp_dir,
+			$out,
+			\@lib_file,
+			\@lib_direction,
+			\@binning_lib_file,
+		);
+	}
+
+	++$n_step;
+	my $re_scaffold_dir = sprintf("%s/%d_re_scaffold", $int_dir, $n_step);
+	if ($overwrite_flag or not(-e "$re_scaffold_dir/done")) {
+		re_scaffold(
+			$re_scaffold_dir,
+			$contig_asm_dir,
+			$binning_dir,
+			$n_thread,
+			$tmp_dir,
+			$out,
+			\@lib_file,
+			\@lib_direction,
+			\@pac_file,
+			\@ont_file,
+			\@tenx_file_paired,
+			\@tenx_file_interleaved,
+		);
+	}
+
+	my $res_dir = sprintf("%s_result", $out);
+	mkdir($res_dir);
+	(-d $res_dir) or die(sprintf("Error: can not make %s (directory).\n$!", $res_dir));
+
+	if ($no_tgsgapcloser_flag or (@pac_file == 0 and @ont_file == 0)) {
+		system("reform_fasta.pl $re_scaffold_dir/final.fa >$res_dir/${out}_final.fa 2>/dev/null 2>&1");
+		system("fasta_cluster_tsv.pl $res_dir/${out}_final.fa >$res_dir/${out}_finalClusters.tsv 2>/dev/null 2>&1");
+		system("fasta_split_cluster.pl $res_dir/${out}_final.fa $res_dir/${out}_finalClusters.tsv $res_dir/${out}_finalClusters >/dev/null 2>&1 2>&1");
+
+		printf STDERR ("Final results: %s, %s (strored in %s)\n", "${out}_final.fa", "${out}_finalClusters", $res_dir);
+		print STDERR ("metaplatanus finished!\n");
+		return(0);
+	}
+
+	system("reform_fasta.pl $re_scaffold_dir/final.fa >$res_dir/${out}_preClose.fa 2>/dev/null 2>&1");
+	system("fasta_cluster_tsv.pl $res_dir/${out}_preClose.fa >$res_dir/${out}_preCloseClusters.tsv 2>/dev/null 2>&1");
+	system("fasta_split_cluster.pl $res_dir/${out}_preClose.fa $res_dir/${out}_preCloseClusters.tsv $res_dir/${out}_preCloseClusters >/dev/null 2>&1 2>&1");
+
+	++$n_step;
+	my $tgsgapcloser_dir = sprintf("%s/%d_tgsgapcloser", $int_dir, $n_step);
+	if ($overwrite_flag or not(-e "$tgsgapcloser_dir/done")) {
+		run_tgsgapcloser(
+			$tgsgapcloser_dir,
+			"${res_dir}/${out}_preClose.fa",
+			$n_thread,
+			$tmp_dir,
+			$out,
+			\@pac_file,
+			\@ont_file,
+		);
+	}
+
+	if ($no_nextpolish_flag) {
+		system("reform_fasta.pl ${tgsgapcloser_dir}/final.fa >$res_dir/${out}_final.fa 2>/dev/null 2>&1");
+		system("fasta_cluster_tsv.pl $res_dir/${out}_final.fa >$res_dir/${out}_finalClusters.tsv 2>/dev/null 2>&1");
+		system("fasta_split_cluster.pl $res_dir/${out}_final.fa $res_dir/${out}_finalClusters.tsv $res_dir/${out}_finalClusters >/dev/null 2>&1 2>&1");
+
+		printf STDERR ("Final results: %s, %s (strored in %s)\n", "${out}_final.fa", "${out}_finalClusters", $res_dir);
+		print STDERR ("metaplatanus finished!\n");
+		return(0);
+	}
+
+	++$n_step;
+	my $nextpolish_dir = sprintf("%s/%d_nextpolish", $int_dir, $n_step);
+	if ($overwrite_flag or not(-e "$nextpolish_dir/done")) {
+		run_nextpolish(
+			$nextpolish_dir,
+			"${tgsgapcloser_dir}/final.fa",
+			$n_thread,
+			$tmp_dir,
+			$out,
+			\@lib_file,
+		);
+	}
+
+	system("reform_fasta.pl $nextpolish_dir/final.fa >$res_dir/${out}_final.fa 2>/dev/null 2>&1");
+	system("fasta_cluster_tsv.pl $res_dir/${out}_final.fa >$res_dir/${out}_finalClusters.tsv 2>/dev/null 2>&1");
+	system("fasta_split_cluster.pl $res_dir/${out}_final.fa $res_dir/${out}_finalClusters.tsv $res_dir/${out}_finalClusters >/dev/null 2>&1 2>&1");
+
+	printf STDERR ("Final results: %s, %s, %s, %s (strored in %s)\n", "${out}_preClose.fa", "${out}_preCloseClusters", "${out}_final.fa", "${out}_finalClusters", $res_dir);
+	print STDERR ("metaplatanus finished!\n");
+	return(0);
+}
+
+
+sub contig_asm
+{
+	my $work_dir = shift;
+	my $lower_cov_cut = shift;
+	my $n_thread = shift;
+	my $mem = shift;
+	my $tmp_dir = shift;
+	my $out = shift;
+	my $lib_file = shift;
+	my $lib_direction = shift;
+
+	my $upper_cov_cut = 2 * $lower_cov_cut;
+	my $base_dir = File::Spec->rel2abs('.');
+
+	mkdir($work_dir);
+	chdir($work_dir) or die(sprintf("Error: can not make or enter %s (directory).\n$!", $work_dir));
+
+	my $file_input_str = '';
+	for (my $i = 0; $i < @{$lib_file}; ++$i) {
+		if (not(defined($lib_file->[$i]))) {
+			next;
+		}
+		for (my $j = 0; $j < @{$lib_file->[$i]}; ++$j) {
+			if ($lib_direction->[$i] eq 'I') {
+				$file_input_str .= ($lib_file->[$i][$j] . " ");
+			}
+		}
+	}
+
+	my $script_fh;
+	open($script_fh, ">cmd.bash");
+	print $script_fh <<_EOS;
+#!/usr/bin/bash
+
+t=$n_thread
+m=$mem
+tmp=$tmp_dir
+o=$out
+lower_cov_cut=$lower_cov_cut
+upper_cov_cut=$upper_cov_cut
+
+/usr/bin/time metaplatanus_core assemble -tmp \$tmp -c \$lower_cov_cut -C \$upper_cov_cut -t \$t -m \$m -f $file_input_str -o \${o} 2>\${o}.assembleLog
+_EOS
+	close($script_fh);
+
+	system("bash cmd.bash >cmd.stdout 2>cmd.stderr") == 0 or die "Error: contig_assembly error!\n$!\n";
+
+	system('touch done');
+	chdir($base_dir);
+}
+
+
+sub iterative_asm
+{
+	my $work_dir = shift;
+	my $metaplatanus_contig_dir = shift;
+	my $n_thread = shift;
+	my $mem = shift;
+	my $tmp_dir = shift;
+	my $out = shift;
+	my $lib_file = shift;
+	my $lib_direction = shift;
+	my $pac_file = shift;
+	my $ont_file = shift;
+	my $tenx_file_paired = shift;
+	my $tenx_file_interleaved = shift;
+
+	my $base_dir = File::Spec->rel2abs('.');
+	$metaplatanus_contig_dir = File::Spec->rel2abs($metaplatanus_contig_dir);
+
+	mkdir($work_dir);
+	chdir($work_dir) or die(sprintf("Error: can not make or enter %s (directory).\n$!", $work_dir));
+
+	my $file_input_str = '';
+	for (my $i = 0; $i < @{$lib_file}; ++$i) {
+		if (not(defined($lib_file->[$i]))) {
+			next;
+		}
+		$file_input_str .= sprintf("-%sP%d ", $lib_direction->[$i], $i + 1);
+		for (my $j = 0; $j < @{$lib_file->[$i]}; ++$j) {
+			$file_input_str .= ($lib_file->[$i][$j] . " ");
+		}
+	}
+
+	if (ref($pac_file) eq 'ARRAY' and @{$pac_file} > 0) {
+		$file_input_str .= " -p ";
+		for (my $i = 0; $i < @{$pac_file}; ++$i) {
+			$file_input_str .= ($pac_file->[$i] . " ");
+		}
+	}
+
+	if (ref($ont_file) eq 'ARRAY' and @{$ont_file} > 0) {
+		$file_input_str .= " -ont ";
+		for (my $i = 0; $i < @{$ont_file}; ++$i) {
+			$file_input_str .= ($ont_file->[$i] . " ");
+		}
+	}
+
+	if (ref($tenx_file_interleaved) eq 'ARRAY' and @{$tenx_file_interleaved} > 0) {
+		$file_input_str .= " -x ";
+		for (my $i = 0; $i < @{$tenx_file_interleaved}; ++$i) {
+			$file_input_str .= ($tenx_file_interleaved->[$i] . " ");
+		}
+	}
+
+	if (ref($tenx_file_paired) eq 'ARRAY' and @{$tenx_file_paired} > 0) {
+		$file_input_str .= " -X ";
+		for (my $i = 0; $i < @{$tenx_file_paired}; ++$i) {
+			$file_input_str .= ($tenx_file_paired->[$i] . " ");
+		}
+	}
+
+	my $script_fh;
+	open($script_fh, ">cmd.bash");
+	print $script_fh <<_EOS;
+#!/usr/bin/bash
+
+t=$n_thread
+m=$mem
+tmp=$tmp_dir
+o=$out
+metaplatanus_contig_dir=$metaplatanus_contig_dir
+
+ln -fs \$metaplatanus_contig_dir/\${o}_contig.fa >/dev/null 2>&1
+ln -fs \$metaplatanus_contig_dir/\${o}_junctionKmer.fa >/dev/null 2>&1
+ln -fs \$metaplatanus_contig_dir/\${o}_kmer_occ.bin >/dev/null 2>&1
+
+/usr/bin/time metaplatanus_core cov_trim -recalc_cov -tmp \$tmp -k \${o}_kmer_occ.bin -c \${o}_contig.fa \${o}_junctionKmer.fa -o initial 2>initial_recalc.log
+/usr/bin/time metaplatanus_core merge -fixed_k_len -tmp \$tmp -m \$m -f initial_recalc.fa -o initial 2>initial_merge.log
+/usr/bin/time metaplatanus_core iterate -tmp \$tmp -c initial_merged.fa initial_mergedJunctionKmer.fa -k \${o}_kmer_occ.bin -t \$t -m \$m $file_input_str -o \${o} 2>\${o}.iteLog
+_EOS
+	close($script_fh);
+
+	system("bash cmd.bash >cmd.stdout 2>cmd.stderr") == 0 or die "Error: iterative_assembly error!\n$!\n";
+
+	system('touch done');
+	chdir($base_dir);
+}
+
+
+sub binning_metabat 
+{
+	my $work_dir = shift;
+	my $iterative_asm_dir = shift;
+	my $n_thread = shift;
+	my $mem = shift;
+	my $tmp_dir = shift;
+	my $out = shift;
+	my $lib_file = shift;
+	my $lib_direction = shift;
+	my $binning_lib_file = shift;
+
+	my $base_dir = File::Spec->rel2abs('.');
+	$iterative_asm_dir = File::Spec->rel2abs($iterative_asm_dir);
+
+	mkdir($work_dir);
+	chdir($work_dir) or die(sprintf("Error: can not make or enter %s (directory).\n$!", $work_dir));
+
+	$tmp_dir = File::Spec->rel2abs($tmp_dir);
+	$tmp_dir = `mktemp -d $tmp_dir/XXXXXX`;
+	chomp($tmp_dir);
+	(-d $tmp_dir) or die(sprintf("Error: can not make %s (temporary directory).\n$!", $tmp_dir));
+	chdir($tmp_dir) or die(sprintf("Error: can not make or enter %s (temporary directory).\n$!", $tmp_dir));
+
+
+	my @file_input = ();
+	for (my $i = 0; $i < @{$binning_lib_file}; ++$i) {
+		if (not(defined($binning_lib_file->[$i]))) {
+			next;
+		}
+		for (my $j = 0; $j < @{$binning_lib_file->[$i]}; ++$j) {
+			push(@{$file_input[$i]}, $binning_lib_file->[$i][$j]);
+		}
+	}
+
+	if (@file_input == 0) {
+		for (my $i = 0; $i < @{$lib_file}; ++$i) {
+			if (not(defined($lib_file->[$i]))) {
+				next;
+			}
+			for (my $j = 0; $j < @{$lib_file->[$i]}; ++$j) {
+				if ($lib_direction->[$i] eq 'I') {
+					push(@{$file_input[0]}, $lib_file->[$i][$j]);
+				}
+			}
+		}
+	}
+		
+	my $mem_per_thread = 1000000000 * $mem / $n_thread;
+	my $map_cmd_str = '';
+	my $bam_str = '';
+	for (my $i = 0; $i < @file_input; ++$i) {
+		if (not(defined($file_input[$i]))) {
+			next;
+		}
+		my @file_input1 = ();
+		my @file_input2 = ();
+		for (my $j = 0; $j + 1 < @{$file_input[$i]}; $j += 2) {
+			push(@file_input1, $file_input[$i][$j]);
+			push(@file_input2, $file_input[$i][$j + 1]);
+		}
+
+		my $lib_id = ("lib_" . ($i + 1));
+		$map_cmd_str .= sprintf(
+			"bwa mem -t \$t base.fa <(cat %s) <(cat %s) 2>>%s_bwa_mem.log | samtools view -b - >%s_raw.bam 2>%s_bwa_mem.log\n",
+			join(' ', @file_input1),
+			join(' ', @file_input2),
+			$lib_id,
+			$lib_id,
+			$lib_id,
+		);
+			
+		$map_cmd_str .= sprintf(
+			"samtools sort -m %s -\@ \$t -o %s_sorted.bam %s_raw.bam >%s_samtools_sort.log 2>&1\n",
+			$mem_per_thread,
+			$lib_id,
+			$lib_id,
+			$lib_id,
+		);
+
+		$bam_str .= sprintf("%s_sorted.bam ", $lib_id);
+	}
+	
+	my $script_fh;
+	open($script_fh, ">cmd.bash");
+	print $script_fh <<_EOS;
+#!/usr/bin/bash
+
+t=$n_thread
+tmp=$tmp_dir
+o=$out
+iterative_asm_dir=$iterative_asm_dir
+
+ln -fs \$iterative_asm_dir/\${o}_iterativeAssembly.fa base.fa
+bwa index base.fa >bwa_index.log 2>&1
+
+$map_cmd_str
+
+BAMS="$bam_str"
+/usr/bin/time jgi_summarize_bam_contig_depths --outputDepth depth.txt \$BAMS >jgi_summarize_bam_contig_depths.log 2>&1 || exit 1
+/usr/bin/time metabat2 -t \$t -i base.fa -a depth.txt -o metabat2_out.tsv -l -v --saveCls --noBinOut >metabat2.stdout 2>metabat2.stderr || exit 1
+renumber_metabat2_bin.pl metabat2_out.tsv >final.tsv
+
+rm *.bam
+exit 0
+_EOS
+	close($script_fh);
+
+	my $cmd_status = system("bash cmd.bash >cmd.stdout 2>cmd.stderr");
+
+	chdir($base_dir);
+	mkdir($work_dir);
+	system("mv $tmp_dir/* $work_dir");
+	system("rm -r $tmp_dir");
+
+	($cmd_status != 0) and die "Error: $cmd_status binning (metabat2) error!\n$!\n";
+	system('touch done');
+}
+
+
+sub re_scaffold
+{
+	my $work_dir = shift;
+	my $contig_dir = shift;
+	my $binning_dir = shift;
+	my $n_thread = shift;
+	my $tmp_dir = shift;
+	my $out = shift;
+	my $lib_file = shift;
+	my $lib_direction = shift;
+	my $pac_file = shift;
+	my $ont_file = shift;
+	my $tenx_file_paired = shift;
+	my $tenx_file_interleaved = shift;
+
+	my $base_dir = File::Spec->rel2abs('.');
+	$contig_dir = File::Spec->rel2abs($contig_dir);
+	$binning_dir = File::Spec->rel2abs($binning_dir);
+
+	mkdir($work_dir);
+	chdir($work_dir) or die(sprintf("Error: can not make or enter %s (directory).\n$!", $work_dir));
+
+	my $scaffold_input_str = '';
+	for (my $i = 0; $i < @{$lib_file}; ++$i) {
+		if (not(defined($lib_file->[$i]))) {
+			next;
+		}
+		$scaffold_input_str .= sprintf("-%sP%d ", $lib_direction->[$i], $i + 1);
+		for (my $j = 0; $j < @{$lib_file->[$i]}; ++$j) {
+			$scaffold_input_str .= ($lib_file->[$i][$j] . " ");
+		}
+	}
+	my $fill_input_str = $scaffold_input_str;
+
+	if (ref($pac_file) eq 'ARRAY' and @{$pac_file} > 0) {
+		$scaffold_input_str .= " -p ";
+		for (my $i = 0; $i < @{$pac_file}; ++$i) {
+			$scaffold_input_str .= ($pac_file->[$i] . " ");
+		}
+	}
+
+	if (ref($ont_file) eq 'ARRAY' and @{$ont_file} > 0) {
+		$scaffold_input_str .= " -ont ";
+		for (my $i = 0; $i < @{$ont_file}; ++$i) {
+			$scaffold_input_str .= ($ont_file->[$i] . " ");
+		}
+	}
+
+	if (ref($tenx_file_interleaved) eq 'ARRAY' and @{$tenx_file_interleaved} > 0) {
+		$scaffold_input_str .= " -x ";
+		for (my $i = 0; $i < @{$tenx_file_interleaved}; ++$i) {
+			$scaffold_input_str .= ($tenx_file_interleaved->[$i] . " ");
+		}
+	}
+
+	if (ref($tenx_file_paired) eq 'ARRAY' and @{$tenx_file_paired} > 0) {
+		$scaffold_input_str .= " -X ";
+		for (my $i = 0; $i < @{$tenx_file_paired}; ++$i) {
+			$scaffold_input_str .= ($tenx_file_paired->[$i] . " ");
+		}
+	}
+
+	my $script_fh;
+	open($script_fh, ">cmd.bash");
+	print $script_fh <<_EOS;
+#!/usr/bin/bash
+
+t=$n_thread
+tmp=$tmp_dir
+o=$out
+contig_dir=$contig_dir
+binning_dir=$binning_dir
+
+ln -s \$contig_dir/\${o}_kmer_occ.bin >/dev/null 2>&1
+ln -s \$binning_dir/final.tsv binning.tsv >/dev/null 2>&1
+ln -s \$binning_dir/base.fa >/dev/null 2>&1
+
+/usr/bin/time metaplatanus_core solve_DBG -unphase -tmp \$tmp -k \${o}_kmer_occ.bin -g binning.tsv -c base.fa $scaffold_input_str -t \$t -o \$o 2>\${o}.rescaffoldLog
+cat \${o}_extendedClusters/*.fa >\${o}_extendedClusters_all.fa
+rm -rf \${o}_extendedClusters >/dev/null 2>&1
+/usr/bin/time metaplatanus_core cluster_fill -tmp \$tmp -c \${o}_extendedClusters_all.fa $fill_input_str -t \$t -o \$o 2>\${o}.fillLog
+rm -r \${o}_filledClusters
+mv \${o}_filledClusters_all.fa final.fa
+_EOS
+	close($script_fh);
+
+	system("bash cmd.bash >cmd.stdout 2>cmd.stderr") == 0 or die "Error: re_scaffold error!\n$!\n";
+
+	system('touch done');
+	chdir($base_dir);
+}
+
+
+sub run_tgsgapcloser
+{
+	my $work_dir = shift;
+	my $input_fasta = shift;
+	my $n_thread = shift;
+	my $tmp_dir = shift;
+	my $out = shift;
+	my $pac_file = shift;
+	my $ont_file = shift;
+
+	my $base_dir = File::Spec->rel2abs('.');
+	$input_fasta = File::Spec->rel2abs($input_fasta);
+
+	my $tgstype = 'pb';
+	if (@{$ont_file} > 0) {
+		$tgstype = 'ont';
+	}
+	my $long_read_str = join(" ", (@{$ont_file}, @{$pac_file}));
+
+	$tmp_dir = File::Spec->rel2abs($tmp_dir);
+	$tmp_dir = `mktemp -d $tmp_dir/XXXXXX`;
+	chomp($tmp_dir);
+	(-d $tmp_dir) or die(sprintf("Error: can not make %s (temporary directory).\n$!", $tmp_dir));
+	chdir($tmp_dir) or die(sprintf("Error: can not make or enter %s (temporary directory).\n$!", $tmp_dir));
+
+	my $racon_path = `which racon`;
+	chomp($racon_path);
+	
+	my $script_fh;
+	open($script_fh, ">cmd.bash");
+	print $script_fh <<_EOS;
+#!/usr/bin/bash
+
+input_fasta=$input_fasta
+t=$n_thread
+r_round=3
+tgstype=$tgstype
+
+ln -fs \$input_fasta base.fa
+seqkit fq2fa -w 0 $long_read_str >long_read.fa
+
+/usr/bin/time tgsgapcloser_mod \\
+--thread \$t \\
+--scaff base.fa \\
+--tgstype \$tgstype \\
+--racon $racon_path \\
+--reads long_read.fa \\
+--r_round \$r_round \\
+--output out \\
+>tgsgapcloser.stdout 2>tgsgapcloser.stderr
+
+rm *.bam *.sam *.paf out.ont*.fasta long_read.fa >/dev/null 2>&1
+mv out.scaff_seqs final.fa
+_EOS
+	close($script_fh);
+
+	my $cmd_status = system("bash cmd.bash >cmd.stdout 2>cmd.stderr");
+
+	chdir($base_dir);
+	mkdir($work_dir);
+	system("mv $tmp_dir/* $work_dir");
+	system("rm -r $tmp_dir");
+
+	($cmd_status != 0) and die "Error: run_tgsgapcloser error!\n$!\n";
+	system("touch $work_dir/done");
+}
+
+
+sub run_nextpolish
+{
+	my $work_dir = shift;
+	my $input_fasta = shift;
+	my $n_thread = shift;
+	my $tmp_dir = shift;
+	my $out = shift;
+	my $lib_file = shift;
+
+	my $base_dir = File::Spec->rel2abs('.');
+	$input_fasta = File::Spec->rel2abs($input_fasta);
+
+	$tmp_dir = File::Spec->rel2abs($tmp_dir);
+	$tmp_dir = `mktemp -d $tmp_dir/XXXXXX`;
+	chomp($tmp_dir);
+	(-d $tmp_dir) or die(sprintf("Error: can not make %s (temporary directory).\n$!", $tmp_dir));
+	chdir($tmp_dir) or die(sprintf("Error: can not make or enter %s (temporary directory).\n$!", $tmp_dir));
+
+	my $fofn_fh;
+	open($fofn_fh, ">sgs.fofn");
+	for (my $i = 0; $i < @{$lib_file}; ++$i) {
+		if (not(defined($lib_file->[$i]))) {
+			next;
+		}
+		for (my $j = 0; $j < @{$lib_file->[$i]}; ++$j) {
+			print $fofn_fh ($lib_file->[$i][$j], "\n");
+		}
+	}
+	close($fofn_fh);
+
+	my $config_fh;
+	open($config_fh, ">run.cfg");
+	print $config_fh <<_EOS;
+[General]
+job_type = local
+job_prefix = np
+task = best
+rewrite = yes
+rerun = 3
+parallel_jobs = 1
+multithread_jobs = $n_thread
+genome = base.fa
+genome_size = auto
+workdir = np_work
+polish_options = -p {multithread_jobs}
+
+[sgs_option]
+sgs_fofn = sgs.fofn
+sgs_options = -max_depth 100
+_EOS
+	close($config_fh);
+
+	my $script_fh;
+	open($script_fh, ">cmd.bash");
+	print $script_fh <<_EOS;
+#!/usr/bin/bash
+
+ln -fs $input_fasta base.fa
+
+/usr/bin/time nextPolish run.cfg >nextpolish.log 2>&1
+
+mv np_work/genome.nextpolish.fasta final.fa || exit 1
+rm -r np_work
+_EOS
+	close($script_fh);
+
+	my $cmd_status = system("bash cmd.bash >cmd.stdout 2>cmd.stderr");
+
+	chdir($base_dir);
+	mkdir($work_dir);
+	system("mv $tmp_dir/* $work_dir");
+	system("rm -r $tmp_dir");
+
+	($cmd_status != 0) and die "Error: run_nextpolish error!\n$!\n";
+	system("touch $work_dir/done");
+}
+
+
+sub sub_command_check
+{
+	my @commands = @_;
+	my $cmd;
+	for $cmd (@commands) {
+		my $status = system("$cmd >/dev/null 2>&1");
+		if ($status != 0) {
+			print STDERR ("Error: \"$cmd\" command returned non-zero status!\nThis internal command may not be installed successfully.\n");
+			exit(1);
+		}
+	}
+}
+
+
+sub print_cons_asm_usage
+{
+	print STDERR
+
+<<'USAGE';
+Usage:
+    metaplatanus [Options] -IP1 short_1.fastq(a) short_2.fastq(a) [-ont ont.fastq(a) ... -p pacbio.fastq(a) ...]
+
+Options:
+    -IP{INT} FWD1 REV1 [FWD2 REV2 ...] : lib_id inward_pair_files (reads in 2 files, fasta or fastq; at least one library required)
+    -OP{INT} FWD1 REV1 [FWD2 REV2 ...] : lib_id outward_pair_files (reads in 2 files, fasta or fastq; aka mate-pairs or jumping-library)
+    -binning_IP{INT} FWD1 REV1 ...     : lib_id inward_pair_files for binning process. (reads in 2 files, fasta or fastq; the data are usually from another sample)
+    -p FILE1 [FILE2 ...]               : PacBio long-read file (fasta or fastq)
+    -ont FILE1 [FILE2 ...]             : Oxford Nanopore long-read file (fasta or fastq)
+    -x PAIR1 [PAIR2 ...]               : barcoded_pair_files (10x Genomics) (reads in 1 file, interleaved, fasta or fastq)
+    -X FWD1 REV1 [FWD2 REV2 ...]       : barcoded_pair_files (10x Genomics) (reads in 2 files, fasta or fastq)
+    -t INT                             : number of threads (<= 1; default, 1)
+    -m INT                             : memory limit for making kmer distribution (unit, GB; default, 0.75 * available_memory))
+    -o STR                             : prefix of output files (default "out")
+    -tmp DIR                           : directory for temporary files (default, ".")
+    -sub_bin DIR                       : directory for sub-executables, such as mata_plantaus and minimap2 (default, directory-of-this-script/sub_bin)
+    -min_cov_contig                    : k-mer coverage cutoff for contig-assembly of MetaPlatanus (default, 2)
+    -overwrite                         : overwrite the previous results, not re-start (default, off)
+    -no_tgsgapcloser                   : do not use TGS-GapCloser and NextPolish (default, off)
+    -no_nextpolish                     : do not use NextPolish (default, off)
+    -h, -help                          : display usage
+    -v, -version                       : display version 
+
+USAGE
+}
+
+
+sub get_n_cpu
+{
+	my $n_cpu = 1;
+
+	$n_cpu = int(`getconf _NPROCESSORS_ONLN`);
+
+	return($n_cpu);
+}
+
+
+sub get_mem_total
+{
+	my $mem = 1;
+	my $in;
+
+	open($in, "/proc/meminfo");
+	while (<$in>) {
+		if (/MemTotal:\s+(\d+)/) {
+			$mem = $1 / 1024 / 1024;
+		}
+	}
+	close($in);
+
+	return(int($mem + 0.5));
+}
+
+
+sub rel2abs_multi
+{
+	my $files_ref = shift;
+
+	if (ref($files_ref) ne 'ARRAY') {
+		return;
+	}
+	
+	for (@{$files_ref}) {
+		if (defined($_)) {
+			$_ = File::Spec->rel2abs($_);
+		}
+	}
+}

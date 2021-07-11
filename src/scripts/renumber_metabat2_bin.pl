@@ -1,6 +1,9 @@
 #!/usr/bin/perl
 
-(@ARGV != 1) and die "usage: $0 metabat2_out.tsv(--saveCls)\n";
+if (@ARGV != 1) {
+	print STDERR ("usage: $0 metabat2_out.tsv(--saveCls)\n");
+	exit(0);
+}
 
 open($in, $ARGV[0]);
 while (chomp($l = <$in>)) {
