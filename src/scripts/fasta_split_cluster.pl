@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 if (@ARGV != 3) {
 	print STDERR ("usage: $0 scf.fa clusters.tsv out_dir\n");

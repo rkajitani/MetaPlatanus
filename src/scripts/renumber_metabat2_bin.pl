@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 if (@ARGV != 1) {
 	print STDERR ("usage: $0 metabat2_out.tsv(--saveCls)\n");

@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 if (@ARGV == 0) {
 	print STDERR ("usage: $0 in1.fa [in2.fa ...]\n");
