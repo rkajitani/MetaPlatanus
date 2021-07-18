@@ -7,7 +7,6 @@ MetaPlatanus is a de novo assembler for metagenome (microbiome). The features of
 (3) Contig-assembly, scaffolding, gap-closing and binning are automatically executed at once.
 (4) MetaPlatanus requires at least one short-read paired-end library.
 
-
 ## Version
 v1.3.0
 
@@ -18,6 +17,64 @@ v1.3.0
 ## Author
 Rei Kajitani at Tokyo Institute of Technology wrote key source codes.  
 Address for this tool: <platanus@bio.titech.ac.jp>
+
+
+## Installation
+Currently MetaPlatanus can be executed in Linux. There are two ways.
+
+1. Install using conda
+Recommended. MetaPlatanus is registered in Bioconda.
+```sh
+conda install -c conda-forge -c bioconta mataplatanus
+```
+
+2. Build from source  
+Install the dependencies above.
+If the following commands are available, you will be able to run metaplatanus.
+  - minimap2
+  - samtools
+  - seqkit
+  - metabat2
+  - jgi_summarize_bam_contig_depths
+  - bwa
+  - tgsgapcloser
+  - racon
+  - nextPolish
+
+Compile (make), and copy metaplatanus and sub_bin to a directory listed in PATH (e.g. $HOME/bin).
+```sh
+make
+cp -r sub_bin metaplatanus $HOME/bin
+```
+The main program is "metaplatanus".
+Note that the directory "sub_bin", which consists of Perl-scripts and other tools, should be specified (-sub_bin option) or put in the same directory of metaplatanus.
+There are two ways to install metaplatanus.
+
+
+## Synopsis
+### Inputs
+* Illumina paired-end: PE_1.fq PE_2.fq (mandatory)
+* Oxford Nanopor long-reads: ONT.fq (optional)
+
+### Commands
+```sh
+metaplatanus -IP1 PE_1.fq PE_2.fq -ont ONT.fq >log.txt 2>&1
+```
+
+### Output
+The files below in out_result (directory). The prefix "out" can be changed using "-o" option.
+* out_final.fa  
+  Final scaffolds as one FASTA file (gap-closed and polished).
+* out_finalClusters  
+  Final scaffolds as separated files of bins.
+* out_finalClusters.tsv  
+  TSV file of scaffold-bin relations.
+* out_preClose.fa  
+  A scaffold FASTA file before processes of TGS-GapCloser and NextPolish.
+* out_preCloseClusters  
+  Separated FASTA files before processes of TGS-GapCloser and NextPolish.
+* out_preCloseClusters.tsv  
+  TSV file of scaffold-bin relations before processes of TGS-GapCloser and NextPolish.
 
 
 ## Dependency (the tools below are included in this package) 
@@ -46,70 +103,13 @@ Address for this tool: <platanus@bio.titech.ac.jp>
     - <https://github.com/BGI-Qingdao/TGS-GapCloser>
 	- v1.0.1 or newer
 
+* Racon (optional)
+    - <https://github.com/isovic/racon>
+	- v1.4.20 or newer
+
 * NextPolish (optional)
     - <https://github.com/Nextomics/NextPolish>
 	- v1.3.1 or newer
-
-
-## Installation
-Currently MetaPlatanus can be executed in Linux.
-To compile (build), just type "make".
-```sh
-make
-```
-
-The main program is "metaplatanus".
-Note that the directory "sub_bin", which consists of Perl-scripts and other tools, should be specified (-sub_bin option) or put in the same directory of metaplatanus.
-There are two ways to install metaplatanus.
-
-1. Install using conda (in preparation)
-```sh
-conda install -c bioconta mataplatanus
-```
-
-2. Build from source  
-Install the dependencies above.
-If the following commands are available, you will be able to run metaplatanus.
-  - minimap2
-  - samtools
-  - seqkit
-  - metabat2
-  - jgi_summarize_bam_contig_depths
-  - bwa
-  - tgsgapcloser
-  - nextPolish
-
-Compile (make), and copy metaplatanus and sub_bin to a directory listed in PATH (e.g. $HOME/bin).
-```sh
-make
-cp -r sub_bin metaplatanus $HOME/bin
-```
-
-
-## Synopsis
-### Inputs
-* Illumina paired-end: PE_1.fq PE_2.fq (mandatory)
-* Oxford Nanopor long-reads: ONT.fq (optional)
-
-### Commands
-```sh
-metaplatanus -IP1 PE_1.fq PE_2.fq -ont ONT.fq >log.txt 2>&1
-```
-
-### Output
-The files below in out_result (directory). The prefix "out" can be changed using "-o" option.
-* out_final.fa  
-  Final scaffolds as one FASTA file (gap-closed and polished).
-* out_finalClusters  
-  Final scaffolds as separated files of bins.
-* out_finalClusters.tsv  
-  TSV file of scaffold-bin relations.
-* out_preClose.fa  
-  A scaffold FASTA file before processes of TGS-GapCloser and NextPolish.
-* out_preCloseClusters  
-  Separated FASTA files before processes of TGS-GapCloser and NextPolish.
-* out_preCloseClusters.tsv  
-  TSV file of scaffold-bin relations before processes of TGS-GapCloser and NextPolish.
 
 
 ---
