@@ -2,7 +2,7 @@
 
 ## Description
 MetaPlatanus is a de novo assembler for metagenome (microbiome). The features of this tool are as follows:
-(1) It can utilize various types of long-range information such as Oxford-Nanopore/PacBio long reads, mate-pairs (jumping libraries), and 10x linked reads (barcoded reads).
+(1) It can utilize various types of long-range information such as Oxford-Nanopore/PacBio long reads, mate-pairs (jumping libraries), and 10x linked reads (experimental).
 (2) Coverage depths, k-mer frequencies and results of the binning tool are also employed to extend sequences and correct mis-assemblies, reducing inter-species misassemblies.
 (3) Contig-assembly, scaffolding, gap-closing and binning are automatically executed at once.
 (4) MetaPlatanus requires at least one short-read paired-end library.
@@ -20,7 +20,7 @@ Address for this tool: <platanus@bio.titech.ac.jp>
 
 
 ## Installation
-Currently MetaPlatanus can be executed in Linux. There are two ways.
+Currently MetaPlatanus can be executed in Linux. There are three ways.
 
 1. Using Miniconda or Anaconda  
 MetaPlatanus is registered in Bioconda channel; Linux only.
