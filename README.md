@@ -22,13 +22,21 @@ Address for this tool: <platanus@bio.titech.ac.jp>
 ## Installation
 Currently MetaPlatanus can be executed in Linux. There are two ways.
 
-1. Install using conda  
-Recommended. MetaPlatanus is registered in Bioconda.
+1. Using Miniconda or Anaconda  
+MetaPlatanus is registered in Bioconda channel; Linux only.
 ```sh
-conda install -c conda-forge -c bioconta mataplatanus
+conda install -c conda-forge -c bioconda mataplatanus
 ```
 
-2. Build from source  
+2. Using Docker  
+For any OS if Docker is available.
+```sh
+docker pull rkajitani/metaplatanus
+# run metaplatanus
+docker run rkajitani/metaplatanus metaplatanus 
+```
+
+3. Build from source  
 Install the dependencies above.
 If the following commands are available, you will be able to run metaplatanus.
   - minimap2
