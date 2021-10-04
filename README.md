@@ -1,7 +1,6 @@
 # MetaPlatanus README.md
 
 ## Description
----
 MetaPlatanus is a de novo assembler for metagenome (microbiome). The features of this tool are as follows:
 (1) It can utilize various types of long-range information such as Oxford-Nanopore/PacBio long reads, mate-pairs (jumping libraries), and 10x linked reads (experimental).
 (2) Coverage depths, k-mer frequencies and results of the binning tool are also employed to extend sequences and correct mis-assemblies, reducing inter-species misassemblies.
@@ -9,22 +8,18 @@ MetaPlatanus is a de novo assembler for metagenome (microbiome). The features of
 (4) MetaPlatanus requires at least one short-read paired-end library.
 
 ## Version
----
 v1.3.0
 
 ## Web site
----
 <https://github.com/rkajitani/MetaPlatanus>  
 <http://platanus.bio.titech.ac.jp>  
 
 ## Author
----
 Rei Kajitani at Tokyo Institute of Technology wrote key source codes.  
 Address for this tool: <platanus@bio.titech.ac.jp>
 
 
 ## Installation
----
 Currently MetaPlatanus can be executed in Linux. There are three ways.
 
 1. Using Miniconda or Anaconda  
@@ -91,7 +86,6 @@ The files below in out_result (directory). The prefix "out" can be changed using
 
 
 ## Dependency (the tools below are included in this package) 
----
 * Minimap2
     - <https://github.com/lh3/minimap2>
     - Only required to use Oxford-Nanopore/PacBio long reads.
@@ -127,7 +121,6 @@ The files below in out_result (directory). The prefix "out" can be changed using
 
 
 ## Usage
----
 ### Command
 ```sh
 metaplatanus -IP1 short_R1.fastq(a) short_R2.fastq(a) [Options] ...
@@ -163,12 +156,10 @@ PREFIX is specified by -o
 
 
 ## Publication
----
 Kajitani, R., Noguchi, H., Gotoh, Y., Ogura, Y., Yoshimura, D., Okuno, M., Toyoda, A., Kuwahara, T., Hayashi, T. and Itoh, T. (2021) MetaPlatanus: a metagenome assembler that combines long-range sequence links and species-specific features. *Nucleic Acids Research*, gkab831. https://doi.org/10.1093/nar/gkab831
   
   
 ## Notes
----
 * Options related to run time
 Although -t (number of threads) of all commands and -m (memory amount) of the "assemble" command are 
 not mandatory to run, it is recommended to set the values adjusting your machine-environment.
