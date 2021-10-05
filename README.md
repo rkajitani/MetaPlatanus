@@ -85,7 +85,7 @@ The files below in out_result (directory). The prefix "out" can be changed using
   TSV file of scaffold-bin relations before processes of TGS-GapCloser and NextPolish.
 
 
-## Dependency (the tools below are included in this package) 
+## Dependency 
 * Minimap2
     - <https://github.com/lh3/minimap2>
     - Only required to use Oxford-Nanopore/PacBio long reads.
