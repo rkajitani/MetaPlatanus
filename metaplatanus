@@ -301,7 +301,7 @@ o=$out
 lower_cov_cut=$lower_cov_cut
 upper_cov_cut=$upper_cov_cut
 
-/usr/bin/time metaplatanus_core assemble -tmp \$tmp -c \$lower_cov_cut -C \$upper_cov_cut -t \$t -m \$m -f $file_input_str -o \${o} 2>\${o}.assembleLog
+metaplatanus_core assemble -tmp \$tmp -c \$lower_cov_cut -C \$upper_cov_cut -t \$t -m \$m -f $file_input_str -o \${o} 2>\${o}.assembleLog
 _EOS
 	close($script_fh);
 
@@ -387,9 +387,9 @@ ln -fs \$metaplatanus_contig_dir/\${o}_contig.fa >/dev/null 2>&1
 ln -fs \$metaplatanus_contig_dir/\${o}_junctionKmer.fa >/dev/null 2>&1
 ln -fs \$metaplatanus_contig_dir/\${o}_kmer_occ.bin >/dev/null 2>&1
 
-/usr/bin/time metaplatanus_core cov_trim -recalc_cov -tmp \$tmp -k \${o}_kmer_occ.bin -c \${o}_contig.fa \${o}_junctionKmer.fa -o initial 2>initial_recalc.log
-/usr/bin/time metaplatanus_core merge -fixed_k_len -tmp \$tmp -m \$m -f initial_recalc.fa -o initial 2>initial_merge.log
-/usr/bin/time metaplatanus_core iterate -tmp \$tmp -c initial_merged.fa initial_mergedJunctionKmer.fa -k \${o}_kmer_occ.bin -t \$t -m \$m $file_input_str -o \${o} 2>\${o}.iteLog
+metaplatanus_core cov_trim -recalc_cov -tmp \$tmp -k \${o}_kmer_occ.bin -c \${o}_contig.fa \${o}_junctionKmer.fa -o initial 2>initial_recalc.log
+metaplatanus_core merge -fixed_k_len -tmp \$tmp -m \$m -f initial_recalc.fa -o initial 2>initial_merge.log
+metaplatanus_core iterate -tmp \$tmp -c initial_merged.fa initial_mergedJunctionKmer.fa -k \${o}_kmer_occ.bin -t \$t -m \$m $file_input_str -o \${o} 2>\${o}.iteLog
 _EOS
 	close($script_fh);
 
@@ -499,8 +499,8 @@ bwa index base.fa >bwa_index.log 2>&1
 $map_cmd_str
 
 BAMS="$bam_str"
-/usr/bin/time jgi_summarize_bam_contig_depths --outputDepth depth.txt \$BAMS >jgi_summarize_bam_contig_depths.log 2>&1 || exit 1
-/usr/bin/time metabat2 -t \$t -i base.fa -a depth.txt -o metabat2_out.tsv -l -v --saveCls --noBinOut >metabat2.stdout 2>metabat2.stderr || exit 1
+jgi_summarize_bam_contig_depths --outputDepth depth.txt \$BAMS >jgi_summarize_bam_contig_depths.log 2>&1 || exit 1
+metabat2 -t \$t -i base.fa -a depth.txt -o metabat2_out.tsv -l -v --saveCls --noBinOut >metabat2.stdout 2>metabat2.stderr || exit 1
 renumber_metabat2_bin.pl metabat2_out.tsv >final.tsv
 
 rm *.bam
@@ -597,10 +597,10 @@ ln -s \$contig_dir/\${o}_kmer_occ.bin >/dev/null 2>&1
 ln -s \$binning_dir/final.tsv binning.tsv >/dev/null 2>&1
 ln -s \$binning_dir/base.fa >/dev/null 2>&1
 
-/usr/bin/time metaplatanus_core solve_DBG -unphase -tmp \$tmp -k \${o}_kmer_occ.bin -g binning.tsv -c base.fa $scaffold_input_str -t \$t -o \$o 2>\${o}.rescaffoldLog
+metaplatanus_core solve_DBG -unphase -tmp \$tmp -k \${o}_kmer_occ.bin -g binning.tsv -c base.fa $scaffold_input_str -t \$t -o \$o 2>\${o}.rescaffoldLog
 cat \${o}_extendedClusters/*.fa >\${o}_extendedClusters_all.fa
 rm -rf \${o}_extendedClusters >/dev/null 2>&1
-/usr/bin/time metaplatanus_core cluster_fill -tmp \$tmp -c \${o}_extendedClusters_all.fa $fill_input_str -t \$t -o \$o 2>\${o}.fillLog
+metaplatanus_core cluster_fill -tmp \$tmp -c \${o}_extendedClusters_all.fa $fill_input_str -t \$t -o \$o 2>\${o}.fillLog
 rm -r \${o}_filledClusters
 mv \${o}_filledClusters_all.fa final.fa
 _EOS
@@ -654,7 +654,7 @@ tgstype=$tgstype
 ln -fs \$input_fasta base.fa
 seqkit fq2fa -w 0 $long_read_str >long_read.fa
 
-/usr/bin/time tgsgapcloser_mod \\
+tgsgapcloser_mod \\
 --thread \$t \\
 --scaff base.fa \\
 --tgstype \$tgstype \\
@@ -740,7 +740,7 @@ _EOS
 
 ln -fs $input_fasta base.fa
 
-/usr/bin/time nextPolish run.cfg >nextpolish.log 2>&1
+nextPolish run.cfg >nextpolish.log 2>&1
 
 mv np_work/genome.nextpolish.fasta final.fa || exit 1
 rm -r np_work
