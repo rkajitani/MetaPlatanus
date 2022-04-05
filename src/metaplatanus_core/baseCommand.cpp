@@ -60,11 +60,11 @@ platanus::FILETYPE BaseCommand::checkFileFormat(const std::string &filename) con
 
 	platanus::closeFileAllowingCompression(fp, filename);
 
-	if (line[0][0]=='>' && strspn(line[1].c_str(), "ACGTN")==line[1].size()) {
+	if (line[0][0]=='>' && strspn(line[1].c_str(), "ACGTNacgtn")==line[1].size()) {
 		return platanus::FILETYPE::FASTA;
 	}
 	if (line[0][0]=='@'
-		&& strspn(line[1].c_str(), "ACGTN")==line[1].size()
+		&& strspn(line[1].c_str(), "ACGTNacgtn")==line[1].size()
 		&& line[2][0]=='+') {
 
 		return platanus::FILETYPE::FASTQ;
