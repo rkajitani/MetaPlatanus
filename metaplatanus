@@ -31,6 +31,7 @@ sub cons_asm_main
 	my $tmp_dir = '.';
 
 	my $min_cov_contig  = 2;
+	my $min_map_idt_binning  = "";
 	my @lib_file;
 	my @lib_direction;
 	my @binning_lib_file;
@@ -57,6 +58,7 @@ sub cons_asm_main
 		'sub_bin=s' => \$sub_bin,
 
 		'min_cov_contig=i' => \$min_cov_contig,
+		'min_map_idt_binning=s' => \$min_map_idt_binning,
 		'p=s{1,}' => \@pac_file,
 		'ont=s{1,}' => \@ont_file,
 		'x=s{1,}' => \@tenx_file_interleaved,
@@ -191,6 +193,7 @@ sub cons_asm_main
 			\@lib_file,
 			\@lib_direction,
 			\@binning_lib_file,
+			$min_map_idt_binning,
 		);
 	}
 
@@ -434,6 +437,7 @@ sub binning_metabat
 	my $lib_file = shift;
 	my $lib_direction = shift;
 	my $binning_lib_file = shift;
+	my $min_map_idt = shift;
 
 	my $base_dir = File::Spec->rel2abs('.');
 	$iterative_asm_dir = File::Spec->rel2abs($iterative_asm_dir);
@@ -505,6 +509,11 @@ sub binning_metabat
 
 		$bam_str .= sprintf("%s_sorted.bam ", $lib_id);
 	}
+
+	my $idt_opt = "";
+	if ($min_map_idt ne "") {
+		$idt_opt = sprintf("--percentIdentity %s", $min_map_idt);
+	}
 	
 	my $script_fh;
 	open($script_fh, ">cmd.bash");
@@ -522,7 +531,7 @@ bwa index base.fa >bwa_index.log 2>&1
 $map_cmd_str
 
 BAMS="$bam_str"
-jgi_summarize_bam_contig_depths --outputDepth depth.txt \$BAMS >jgi_summarize_bam_contig_depths.log 2>&1 || exit 1
+jgi_summarize_bam_contig_depths $idt_opt --outputDepth depth.txt \$BAMS >jgi_summarize_bam_contig_depths.log 2>&1 || exit 1
 metabat2 -t \$t -i base.fa -a depth.txt -o metabat2_out.tsv -l -v --saveCls --noBinOut >metabat2.stdout 2>metabat2.stderr || exit 1
 renumber_metabat2_bin.pl metabat2_out.tsv >final.tsv
 
@@ -818,6 +827,7 @@ Options:
     -tmp DIR                           : directory for temporary files (default, ".")
     -sub_bin DIR                       : directory for sub-executables, such as mata_plantaus and minimap2 (default, directory-of-this-script/sub_bin)
     -min_cov_contig                    : k-mer coverage cutoff for contig-assembly of MetaPlatanus (default, 2)
+    -min_map_idt_binning FLOAT         : minimum identity (%) in read mapping for binning (default, 97)
     -overwrite                         : overwrite the previous results, not re-start (default, off)
     -no_binning                        : do not perfom binning (default, off)
     -no_re_scaffold                    : do not perfom re-scaffolding (default, off)
