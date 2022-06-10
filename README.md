@@ -140,10 +140,13 @@ metaplatanus -IP1 short_R1.fastq(a) short_R2.fastq(a) [Options] ...
 -o STR                             : prefix of output files (default "out")
 -tmp DIR                           : directory for temporary files (default, ".")
 -sub_bin DIR                       : directory for sub-executables, such as mata_plantaus and minimap2 (default, directory-of-this-script/sub_bin)
--min_cov_contig                    : k-mer coverage cutoff for contig-assembly of MetaPlatanus (default, 2)
--overwrite                         : overwrite the previous results, not re-start (default, off)
+-min_cov_contig INT                : k-mer coverage cutoff for contig-assembly of MetaPlatanus (default, 2)
+-min_map_idt_binning FLOAT         : minimum identity (%) in read mapping for binning (default, 97)
+-no_binning                        : do not perfom binning (default, off)
+-no_re_scaffold                    : do not perfom re-scaffolding (default, off)
 -no_tgsgapcloser                   : do not use TGS-GapCloser and NextPolish (default, off)
 -no_nextpolish                     : do not use NextPolish (default, off)
+-overwrite                         : overwrite the previous results, not re-start (default, off)
 -h, -help                          : display usage
 -v, -version                       : display version 
 ```
