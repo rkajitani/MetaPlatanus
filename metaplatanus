@@ -20,6 +20,7 @@ sub cons_asm_main
 	my $help_flag = 0;
 	my $overwrite_flag = 0;
 	my $no_binning_flag = 0;
+	my $no_re_scaffold_flag = 0;
 	my $no_tgsgapcloser_flag = 0;
 	my $no_nextpolish_flag = 0;
 
@@ -45,6 +46,7 @@ sub cons_asm_main
 		'help' => \$help_flag,
 		'overwrite' => \$overwrite_flag,
 		'no_binning' => \$no_binning_flag,
+		'no_re_scaffold' => \$no_re_scaffold_flag,
 		'no_tgsgapcloser' => \$no_tgsgapcloser_flag,
 		'no_nextpolish' => \$no_nextpolish_flag,
 
@@ -190,6 +192,15 @@ sub cons_asm_main
 			\@lib_direction,
 			\@binning_lib_file,
 		);
+	}
+
+	if ($no_re_scaffold_flag) {
+		system("reform_fasta.pl $binning_dir/base.fa >$res_dir/${out}_final.fa 2>/dev/null 2>&1");
+		system("cp $binning_dir/final.tsv $res_dir/${out}_finalClusters.tsv 2>/dev/null 2>&1");
+
+		printf STDERR ("Final results: %s, %s (strored in %s)\n", "${out}_final.fa", "${out}_finalClusters.tsv", $res_dir);
+		print STDERR ("metaplatanus finished!\n");
+		return(0);
 	}
 
 	++$n_step;
@@ -809,6 +820,7 @@ Options:
     -min_cov_contig                    : k-mer coverage cutoff for contig-assembly of MetaPlatanus (default, 2)
     -overwrite                         : overwrite the previous results, not re-start (default, off)
     -no_binning                        : do not perfom binning (default, off)
+    -no_re_scaffold                    : do not perfom re-scaffolding (default, off)
     -no_tgsgapcloser                   : do not use TGS-GapCloser and NextPolish (default, off)
     -no_nextpolish                     : do not use NextPolish (default, off)
     -h, -help                          : display usage
