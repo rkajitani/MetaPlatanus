@@ -19,6 +19,7 @@ sub cons_asm_main
 	my $version_flag = 0;
 	my $help_flag = 0;
 	my $overwrite_flag = 0;
+	my $no_binning_flag = 0;
 	my $no_tgsgapcloser_flag = 0;
 	my $no_nextpolish_flag = 0;
 
@@ -43,6 +44,7 @@ sub cons_asm_main
 		'h' => \$help_flag,
 		'help' => \$help_flag,
 		'overwrite' => \$overwrite_flag,
+		'no_binning' => \$no_binning_flag,
 		'no_tgsgapcloser' => \$no_tgsgapcloser_flag,
 		'no_nextpolish' => \$no_nextpolish_flag,
 
@@ -86,14 +88,16 @@ sub cons_asm_main
 		'reform_fasta.pl',
 		'fasta_cluster_tsv.pl',
 		'fasta_split_cluster.pl',
-		'renumber_metabat2_bin.pl',
 		'minimap2 -h',
 		'samtools help',
 		'seqkit',
-		'which bwa',
-		'metabat2 -h',
-		'jgi_summarize_bam_contig_depths',
 	);
+	if (not $no_binning_flag) {
+		'renumber_metabat2_bin.pl',
+		'which bwa',
+		sub_command_check('metabat2 -h');
+		sub_command_check('jgi_summarize_bam_contig_depths');
+	}
 	if (not $no_tgsgapcloser_flag) {
 		sub_command_check('tgsgapcloser_mod');
 		sub_command_check('racon -h');
@@ -160,6 +164,18 @@ sub cons_asm_main
 		);
 	}
 
+	my $res_dir = sprintf("%s_result", $out);
+	mkdir($res_dir);
+	(-d $res_dir) or die(sprintf("Error: can not make %s (directory).\n$!", $res_dir));
+
+	if ($no_binning_flag) {
+		system("reform_fasta.pl $iterative_asm_dir/${out}_iterativeAssembly.fa >$res_dir/${out}_final.fa 2>/dev/null 2>&1");
+
+		printf STDERR ("Final results: %s (strored in %s)\n", "${out}_final.fa", $res_dir);
+		print STDERR ("metaplatanus finished!\n");
+		return(0);
+	}
+
 	++$n_step;
 	my $binning_dir = sprintf("%s/%d_binning", $int_dir, $n_step);
 	if ($overwrite_flag or not(-e "$binning_dir/done")) {
@@ -194,10 +210,6 @@ sub cons_asm_main
 			\@tenx_file_interleaved,
 		);
 	}
-
-	my $res_dir = sprintf("%s_result", $out);
-	mkdir($res_dir);
-	(-d $res_dir) or die(sprintf("Error: can not make %s (directory).\n$!", $res_dir));
 
 	if ($no_tgsgapcloser_flag or (@pac_file == 0 and @ont_file == 0)) {
 		system("reform_fasta.pl $re_scaffold_dir/final.fa >$res_dir/${out}_final.fa 2>/dev/null 2>&1");
@@ -796,6 +808,7 @@ Options:
     -sub_bin DIR                       : directory for sub-executables, such as mata_plantaus and minimap2 (default, directory-of-this-script/sub_bin)
     -min_cov_contig                    : k-mer coverage cutoff for contig-assembly of MetaPlatanus (default, 2)
     -overwrite                         : overwrite the previous results, not re-start (default, off)
+    -no_binning                        : do not perfom binning (default, off)
     -no_tgsgapcloser                   : do not use TGS-GapCloser and NextPolish (default, off)
     -no_nextpolish                     : do not use NextPolish (default, off)
     -h, -help                          : display usage
