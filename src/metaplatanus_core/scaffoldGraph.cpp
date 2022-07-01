@@ -105,7 +105,7 @@ void ScaffoldGraph::saveOverlap(const Mapper &map, const long hashOverlapValue, 
     for (unsigned i = 0; i < TABLE_DIVID; ++i)
         omp_init_lock(&lock[i]);
     omp_set_num_threads(numThread);
-    // # pragma omp parallel for schedule(static, 1) private(positionBuffer, bufferSize)
+    # pragma omp parallel for schedule(static, 1) private(positionBuffer, bufferSize)
     for (long threadID = 0; threadID < numThread; ++threadID) {
         for (long i = threadID; i < numContig; i += numThread) {
             Kmer31 leftKmer(keyLength);
