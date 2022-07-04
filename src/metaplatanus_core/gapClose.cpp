@@ -46,6 +46,7 @@ GapClose::GapClose()
     optionBool["-extend"] = false;
     optionBool["-no_partial"] = false;
     optionBool["-cluster"] = false;
+    optionBool["-no_extra_contig"] = false;
 
 //    optionMultiArgs["-s"] = vector<string>(3);
 //    optionMultiArgs["-s"][0] = "32";
@@ -96,6 +97,7 @@ void GapClose::usage(void) const
               << "    -extend                            : extend the ends of scaffolds (default false)\n"
               << "    -no_partial                        : not close gaps partially, i.e. only close ones completely (default, off)\n"
               << "    -cluster                           : cluster-aware mode, inheriting cluster-IDs from inputs (-c) (default, off)\n"
+              << "    -no_extra_contig                   : do not add extra contigs (default, off)\n"
               << "    -tmp DIR                           : directory for temporary files (default " << optionSingleArgs.at("-tmp") << ")\n\n\n"
 
               << "Output:\n"
@@ -263,8 +265,10 @@ void GapClose::exec(void)
 
     fclose(unusedFP);
 
-    FILE *contigFP = closer.extraAssemble(numThread);
-    closer.printExtraContig(optionSingleArgs["-o"], contigFP, averageReadLength, readLength, contigMaxK);
+    if (!optionBool["-no_extra_contig"]) {
+		FILE *contigFP = closer.extraAssemble(numThread);
+		closer.printExtraContig(optionSingleArgs["-o"], contigFP, averageReadLength, readLength, contigMaxK);
+	}
 
     std::cerr << "gap_close completed!!" << std::endl;
 }

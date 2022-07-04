@@ -27,6 +27,7 @@ ClusterFill::ClusterFill()
     optionMultiArgs["-s"] = vector<string>(1);
     optionMultiArgs["-s"][0] = "32";
 
+	optionBool["-no_extra_contig"] = false;
 	optionBool["-keep_file"] = false;
 }
 
@@ -53,6 +54,7 @@ void ClusterFill::usage(void) const
               << "    -s INT1 [INT2 ...]                 : mapping seed length for short reads (default " << optionMultiArgs.at("-s")[0] << ")\n"
               << "    -t INT                             : number of threads (default " << optionSingleArgs.at("-t") << ")\n"
               << "    -tmp DIR                           : directory for temporary files (default " << optionSingleArgs.at("-tmp") << ")\n"
+              << "    -no_extra_contig                   : do not add extra contigs (default, off)\n"
               << "    -keep_file                         : keep all intermediate files (default, off)\n"
 			  << "\n\n"
               << "Outputs:\n"
@@ -113,6 +115,10 @@ void ClusterFill::execGapClose(void)
     std::ostringstream oss;
     oss << this->platanusBinary << " gap_close -cluster -extend -no_partial";
 
+	if (optionBool["-no_extra_contig"]) {
+		oss << " -no_extra_contig";
+	}
+
     for (auto itr = optionPairFile.begin(); itr != optionPairFile.end(); ++itr) {
         oss << " " << itr->libraryType << itr->libraryID << " " << itr->fileFirst;
         if (!(itr->fileSecond.empty())) {
@@ -155,16 +161,19 @@ void ClusterFill::execGapTrim(void)
 
     std::ostringstream oss;
 	if (optionMultiArgs["-p"].empty() && optionMultiArgs["-ont"].empty() && optionMultiArgs["-ont"].empty()) {
-		oss << "cat"
-			<< " " << outputPrefix << "*_gapClosed_*.fa"
-			<< " " << outputPrefix << "_extraContig.fa"
-			<< " >" << outputPrefix << "_gapTrimmed.fa";
+		oss << "cat" << " " << outputPrefix << "*_gapClosed_*.fa";
+		if (!optionBool["-no_extra_contig"]) {
+			oss << " " << outputPrefix << "_extraContig.fa";
+		}
+		oss << " >" << outputPrefix << "_gapTrimmed.fa";
 	}
 	else {
 		oss << this->platanusBinary << " solve_DBG -trim_gap_side"
 			<< " -c"
-			<< " " << outputPrefix << "*_gapClosed_*.fa"
-			<< " " << outputPrefix << "_extraContig.fa";
+			<< " " << outputPrefix << "*_gapClosed_*.fa";
+			if (!optionBool["-no_extra_contig"]) {
+				oss << " " << outputPrefix << "_extraContig.fa";
+			}
 
 		for (auto optItr = singleArgOptionList.begin(); optItr != singleArgOptionList.end(); ++optItr) {
 			if (!(optionSingleArgs[*optItr].empty())) {
