@@ -8,7 +8,7 @@ MetaPlatanus is a de novo assembler for metagenome (microbiome). The features of
 (4) MetaPlatanus requires at least one short-read paired-end library.
 
 ## Version
-v1.3.0
+v1.3.1
 
 ## Web site
 <https://github.com/rkajitani/MetaPlatanus>  
@@ -48,6 +48,7 @@ If the following commands are available, you will be able to run metaplatanus.
   - tgsgapcloser
   - racon
   - nextPolish
+  - megahit
 
 Compile (make), and copy metaplatanus and sub_bin to a directory listed in PATH (e.g. $HOME/bin).
 ```sh
@@ -66,7 +67,8 @@ There are two ways to install metaplatanus.
 
 ### Commands
 ```sh
-metaplatanus -IP1 PE_1.fq PE_2.fq -ont ONT.fq >log.txt 2>&1
+metaplatanus -t 8 -m 64 -IP1 PE_1.fq PE_2.fq -ont ONT.fq >log.txt 2>&1
+# num_threads, 8; memory_limit, 64GB
 ```
 
 ### Output
@@ -107,6 +109,10 @@ The files below in out_result (directory). The prefix "out" can be changed using
     - <https://bioinf.shenwei.me/seqkit/>
 	- v1.16.1 or newer
 
+* MEGAHIT
+    - <https://github.com/voutcn/megahit>
+	- v1.2.9 or newer
+
 * TGS-GapCloser (optional)
     - <https://github.com/BGI-Qingdao/TGS-GapCloser>
 	- v1.0.1 or newer
@@ -136,12 +142,13 @@ metaplatanus -IP1 short_R1.fastq(a) short_R2.fastq(a) [Options] ...
 -x PAIR1 [PAIR2 ...]               : barcoded_pair_files (10x Genomics) (reads in 1 file, interleaved, fasta or fastq)
 -X FWD1 REV1 [FWD2 REV2 ...]       : barcoded_pair_files (10x Genomics) (reads in 2 files, fasta or fastq)
 -t INT                             : number of threads (<= 1; default, 1)
--m INT                             : memory limit for making kmer distribution (unit, GB; default, 0.75 * available_memory))
+-m INT                             : memory limit for making kmer distribution (unit, GB; default, 64)
 -o STR                             : prefix of output files (default "out")
 -tmp DIR                           : directory for temporary files (default, ".")
 -sub_bin DIR                       : directory for sub-executables, such as mata_plantaus and minimap2 (default, directory-of-this-script/sub_bin)
--min_cov_contig INT                : k-mer coverage cutoff for contig-assembly of MetaPlatanus (default, 2)
+-min_cov_contig INT                : k-mer coverage cutoff for contig-assembly of MetaPlatanus (default, 4 with MEGAHIT, 2 otherwise)
 -min_map_idt_binning FLOAT         : minimum identity (%) in read mapping for binning (default, 97)
+-no_megahit                        : do not perfom MEGAHIT (default, off)
 -no_binning                        : do not perfom binning (default, off)
 -no_re_scaffold                    : do not perfom re-scaffolding (default, off)
 -no_tgsgapcloser                   : do not use TGS-GapCloser and NextPolish (default, off)
