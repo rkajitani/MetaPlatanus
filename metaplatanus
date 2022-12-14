@@ -31,7 +31,7 @@ sub cons_asm_main
 	my $n_thread = 1;
 	my $tmp_dir = '.';
 
-	my $min_cov_contig  = 2;
+	my $min_cov_contig  = -1;
 	my $megahit_min_len = 500;
 	my $min_map_idt_binning  = "";
 	my @lib_file;
@@ -87,6 +87,14 @@ sub cons_asm_main
 	}
 
 	GetOptions(%opt_fmt);
+
+
+	if (not($no_megahit_flag) and $min_cov_contig < 0) {
+		$min_cov_contig  = 4;
+	}
+	elsif ($no_megahit_flag and $min_cov_contig < 0) {
+		$min_cov_contig  = 2;
+	}
 
 	$sub_bin = File::Spec->rel2abs($sub_bin);
 	$ENV{"PATH"} = ($sub_bin . ':' . $ENV{"PATH"});
@@ -407,7 +415,7 @@ tmp=$tmp_dir
 PE1=$file_input_str1
 PE2=$file_input_str2
 
-/usr/bin/time megahit -t \$t --tmp-dir \$tmp -1 \$PE1 -2 \$PE2 >megahit.stdout 2>megahit.stderr
+megahit -t \$t --tmp-dir \$tmp -1 \$PE1 -2 \$PE2 >megahit.stdout 2>megahit.stderr
 rm -r megahit_out/intermediate_contigs
 _EOS
 
