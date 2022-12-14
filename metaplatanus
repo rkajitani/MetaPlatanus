@@ -26,7 +26,7 @@ sub cons_asm_main
 	my $no_nextpolish_flag = 0;
 
 	my $sub_bin = ($FindBin::Bin . '/sub_bin');
-	my $mem = get_mem_total() * 0.75;
+	my $mem = 64;
 	my $out = 'out';
 	my $n_thread = 1;
 	my $tmp_dir = '.';
@@ -923,7 +923,7 @@ Options:
     -x PAIR1 [PAIR2 ...]               : barcoded_pair_files (10x Genomics) (reads in 1 file, interleaved, fasta or fastq)
     -X FWD1 REV1 [FWD2 REV2 ...]       : barcoded_pair_files (10x Genomics) (reads in 2 files, fasta or fastq)
     -t INT                             : number of threads (<= 1; default, 1)
-    -m INT                             : memory limit for making kmer distribution (unit, GB; default, 0.75 * available_memory))
+    -m INT                             : memory limit for making kmer distribution (unit, GB; default, 64)
     -o STR                             : prefix of output files (default "out")
     -tmp DIR                           : directory for temporary files (default, ".")
     -sub_bin DIR                       : directory for sub-executables, such as mata_plantaus and minimap2 (default, directory-of-this-script/sub_bin)
