@@ -19,6 +19,7 @@ sub cons_asm_main
 	my $version_flag = 0;
 	my $help_flag = 0;
 	my $overwrite_flag = 0;
+	my $no_megahit_flag = 0;
 	my $no_binning_flag = 0;
 	my $no_re_scaffold_flag = 0;
 	my $no_tgsgapcloser_flag = 0;
@@ -47,6 +48,7 @@ sub cons_asm_main
 		'h' => \$help_flag,
 		'help' => \$help_flag,
 		'overwrite' => \$overwrite_flag,
+		'no_megahit' => \$no_megahit_flag,
 		'no_binning' => \$no_binning_flag,
 		'no_re_scaffold' => \$no_re_scaffold_flag,
 		'no_tgsgapcloser' => \$no_tgsgapcloser_flag,
@@ -97,8 +99,10 @@ sub cons_asm_main
 		'minimap2 -h',
 		'samtools help',
 		'seqkit',
-		'megahit -h',
 	);
+	if (not $no_megahit_flag) {
+		sub_command_check('megahit -h');
+	}
 	if (not $no_binning_flag) {
 		'renumber_metabat2_bin.pl',
 		'which bwa',
@@ -152,16 +156,19 @@ sub cons_asm_main
 		);
 	}
 
-	++$n_step;
-	my $contig_asm_megahit_dir = sprintf("%s/%d_contig_asm_megahit", $int_dir, $n_step);
-	if ($overwrite_flag or not(-e "$contig_asm_megahit_dir/done")) {
-		contig_asm_megahit(
-			$contig_asm_megahit_dir,
-			$n_thread,
-			$tmp_dir,
-			\@lib_file,
-			\@lib_direction,
-		);
+	my $contig_asm_megahit_dir = "";
+	if (not $no_megahit_flag) {
+		++$n_step;
+		$contig_asm_megahit_dir = sprintf("%s/%d_contig_asm_megahit", $int_dir, $n_step);
+		if ($overwrite_flag or not(-e "$contig_asm_megahit_dir/done")) {
+			contig_asm_megahit(
+				$contig_asm_megahit_dir,
+				$n_thread,
+				$tmp_dir,
+				\@lib_file,
+				\@lib_direction,
+			);
+		}
 	}
 
 	++$n_step;
@@ -430,7 +437,9 @@ sub iterative_asm
 
 	my $base_dir = File::Spec->rel2abs('.');
 	$metaplatanus_contig_dir = File::Spec->rel2abs($metaplatanus_contig_dir);
-	$megahit_contig_dir = File::Spec->rel2abs($megahit_contig_dir);
+	if ($megahit_contig_dir ne '') {
+		$megahit_contig_dir = File::Spec->rel2abs($megahit_contig_dir);
+	}
 
 	mkdir($work_dir);
 	chdir($work_dir) or die(sprintf("Error: can not make or enter %s (directory).\n$!", $work_dir));
@@ -491,9 +500,13 @@ ln -fs \$metaplatanus_contig_dir/\${o}_contig.fa >/dev/null 2>&1
 ln -fs \$metaplatanus_contig_dir/\${o}_junctionKmer.fa >/dev/null 2>&1
 ln -fs \$metaplatanus_contig_dir/\${o}_kmer_occ.bin >/dev/null 2>&1
 
-seqkit seq -m \$megahit_min_len \$megahit_contig_dir/megahit_out/final.contigs.fa >megahit.fa
+contig_input="\${o}_contig.fa \${o}_junctionKmer.fa"
+if [ -n "\$megahit_contig_dir" ]; then
+    seqkit seq -m \$megahit_min_len \$megahit_contig_dir/megahit_out/final.contigs.fa >megahit.fa
+    contig_input="\${o}_contig.fa \${o}_junctionKmer.fa megahit.fa"
+fi
 
-metaplatanus_core cov_trim -recalc_cov -tmp \$tmp -k \${o}_kmer_occ.bin -c \${o}_contig.fa \${o}_junctionKmer.fa megahit.fa -o initial 2>initial_recalc.log
+metaplatanus_core cov_trim -recalc_cov -tmp \$tmp -k \${o}_kmer_occ.bin -c \$contig_input -o initial 2>initial_recalc.log
 metaplatanus_core merge -fixed_k_len -tmp \$tmp -m \$m -f initial_recalc.fa -o initial 2>initial_merge.log
 metaplatanus_core iterate -tmp \$tmp -c initial_merged.fa initial_mergedJunctionKmer.fa -k \${o}_kmer_occ.bin -t \$t -m \$m $file_input_str -o \${o} 2>\${o}.iteLog
 _EOS
