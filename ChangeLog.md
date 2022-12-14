@@ -1,5 +1,9 @@
 # MetaPlatanus ChangeLog.md
 
+## Version 1.3.1 / 2022-12-14
+* MEGAHIT is combined to assemble initial contigs, like v1.2.3.
+  * -no_megahit option to omit MEGAHIT execution.
+
 ## Version 1.3.0 / 2021-7-2
 * Extensively changed the executable file names and commands.
   * meta_platanus.pl -> metaplatnus

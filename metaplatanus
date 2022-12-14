@@ -5,7 +5,7 @@ use File::Spec;
 use FindBin;
 use Getopt::Long qw/:config posix_default no_ignore_case/;
 
-my $version = 'v1.3.0';
+my $version = 'v1.3.1';
 
 printf STDERR ("metaplatanus version %s\n\n", $version, "\n");
 cons_asm_main(@ARGV);
@@ -927,8 +927,9 @@ Options:
     -o STR                             : prefix of output files (default "out")
     -tmp DIR                           : directory for temporary files (default, ".")
     -sub_bin DIR                       : directory for sub-executables, such as mata_plantaus and minimap2 (default, directory-of-this-script/sub_bin)
-    -min_cov_contig INT                : k-mer coverage cutoff for contig-assembly of MetaPlatanus (default, 2)
+    -min_cov_contig INT                : k-mer coverage cutoff for contig-assembly of MetaPlatanus (default, 4 with MEGAHIT, 2 otherwise)
     -min_map_idt_binning FLOAT         : minimum identity (%) in read mapping for binning (default, 97)
+    -no_megahit                        : do not perfom MEGAHIT assembly (default, off)
     -no_binning                        : do not perfom binning (default, off)
     -no_re_scaffold                    : do not perfom re-scaffolding (default, off)
     -no_tgsgapcloser                   : do not use TGS-GapCloser and NextPolish (default, off)
