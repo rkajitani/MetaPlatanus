@@ -31,6 +31,7 @@ sub cons_asm_main
 	my $tmp_dir = '.';
 
 	my $min_cov_contig  = 2;
+	my $megahit_min_len = 500;
 	my $min_map_idt_binning  = "";
 	my @lib_file;
 	my @lib_direction;
@@ -58,6 +59,7 @@ sub cons_asm_main
 		'sub_bin=s' => \$sub_bin,
 
 		'min_cov_contig=i' => \$min_cov_contig,
+		'megahit_min_len=i' => \$megahit_min_len,
 		'min_map_idt_binning=s' => \$min_map_idt_binning,
 		'p=s{1,}' => \@pac_file,
 		'ont=s{1,}' => \@ont_file,
@@ -95,6 +97,7 @@ sub cons_asm_main
 		'minimap2 -h',
 		'samtools help',
 		'seqkit',
+		'megahit -h',
 	);
 	if (not $no_binning_flag) {
 		'renumber_metabat2_bin.pl',
@@ -150,15 +153,29 @@ sub cons_asm_main
 	}
 
 	++$n_step;
+	my $contig_asm_megahit_dir = sprintf("%s/%d_contig_asm_megahit", $int_dir, $n_step);
+	if ($overwrite_flag or not(-e "$contig_asm_megahit_dir/done")) {
+		contig_asm_megahit(
+			$contig_asm_megahit_dir,
+			$n_thread,
+			$tmp_dir,
+			\@lib_file,
+			\@lib_direction,
+		);
+	}
+
+	++$n_step;
 	my $iterative_asm_dir = sprintf("%s/%d_iterative_asm", $int_dir, $n_step);
 	if ($overwrite_flag or not(-e "$iterative_asm_dir/done")) {
 		iterative_asm(
 			$iterative_asm_dir,
 			$contig_asm_dir,
+			$contig_asm_megahit_dir,
 			$n_thread,
 			$mem,
 			$tmp_dir,
 			$out,
+			$megahit_min_len,
 			\@lib_file,
 			\@lib_direction,
 			\@pac_file,
@@ -338,14 +355,72 @@ _EOS
 }
 
 
+sub contig_asm_megahit
+{
+	my $work_dir = shift;
+	my $n_thread = shift;
+	my $tmp_dir = shift;
+	my $lib_file = shift;
+	my $lib_direction = shift;
+
+	my $base_dir = File::Spec->rel2abs('.');
+
+	mkdir($work_dir);
+	chdir($work_dir) or die(sprintf("Error: can not make or enter %s (directory).\n$!", $work_dir));
+
+	my @file_input = ();
+	for (my $i = 0; $i < @{$lib_file}; ++$i) {
+		if (not(defined($lib_file->[$i]))) {
+			next;
+		}
+		for (my $j = 0; $j < @{$lib_file->[$i]}; ++$j) {
+			if ($lib_direction->[$i] eq 'I') {
+				push(@file_input, $lib_file->[$i][$j]);
+			}
+		}
+	}
+
+	my @file_input1 = ();
+	my @file_input2 = ();
+	for (my $i = 0; $i + 1 < @file_input; $i += 2) {
+		push(@file_input1, $file_input[$i]);
+		push(@file_input2, $file_input[$i + 1]);
+	}
+	my $file_input_str1 = join(',', @file_input1);
+	my $file_input_str2 = join(',', @file_input2);
+
+	my $script_fh;
+	open($script_fh, ">cmd.bash");
+
+	print $script_fh <<_EOS;
+#!/usr/bin/bash
+
+t=$n_thread
+tmp=$tmp_dir
+PE1=$file_input_str1
+PE2=$file_input_str2
+
+/usr/bin/time megahit -t \$t --tmp-dir \$tmp -1 \$PE1 -2 \$PE2 >megahit.stdout 2>megahit.stderr
+rm -r megahit_out/intermediate_contigs
+_EOS
+
+	system("bash cmd.bash >cmd.stdout 2>cmd.stderr") == 0 or die "Error: megahit_contig_assembly error.\n$!\n";
+
+	system('touch done');
+	chdir($base_dir);
+}
+
+
 sub iterative_asm
 {
 	my $work_dir = shift;
 	my $metaplatanus_contig_dir = shift;
+	my $megahit_contig_dir = shift;
 	my $n_thread = shift;
 	my $mem = shift;
 	my $tmp_dir = shift;
 	my $out = shift;
+	my $megahit_min_len = shift;
 	my $lib_file = shift;
 	my $lib_direction = shift;
 	my $pac_file = shift;
@@ -355,6 +430,7 @@ sub iterative_asm
 
 	my $base_dir = File::Spec->rel2abs('.');
 	$metaplatanus_contig_dir = File::Spec->rel2abs($metaplatanus_contig_dir);
+	$megahit_contig_dir = File::Spec->rel2abs($megahit_contig_dir);
 
 	mkdir($work_dir);
 	chdir($work_dir) or die(sprintf("Error: can not make or enter %s (directory).\n$!", $work_dir));
@@ -407,13 +483,17 @@ t=$n_thread
 m=$mem
 tmp=$tmp_dir
 o=$out
+megahit_min_len=$megahit_min_len
 metaplatanus_contig_dir=$metaplatanus_contig_dir
+megahit_contig_dir=$megahit_contig_dir
 
 ln -fs \$metaplatanus_contig_dir/\${o}_contig.fa >/dev/null 2>&1
 ln -fs \$metaplatanus_contig_dir/\${o}_junctionKmer.fa >/dev/null 2>&1
 ln -fs \$metaplatanus_contig_dir/\${o}_kmer_occ.bin >/dev/null 2>&1
 
-metaplatanus_core cov_trim -recalc_cov -tmp \$tmp -k \${o}_kmer_occ.bin -c \${o}_contig.fa \${o}_junctionKmer.fa -o initial 2>initial_recalc.log
+seqkit seq -m \$megahit_min_len \$megahit_contig_dir/megahit_out/final.contigs.fa >megahit.fa
+
+metaplatanus_core cov_trim -recalc_cov -tmp \$tmp -k \${o}_kmer_occ.bin -c \${o}_contig.fa \${o}_junctionKmer.fa megahit.fa -o initial 2>initial_recalc.log
 metaplatanus_core merge -fixed_k_len -tmp \$tmp -m \$m -f initial_recalc.fa -o initial 2>initial_merge.log
 metaplatanus_core iterate -tmp \$tmp -c initial_merged.fa initial_mergedJunctionKmer.fa -k \${o}_kmer_occ.bin -t \$t -m \$m $file_input_str -o \${o} 2>\${o}.iteLog
 _EOS
