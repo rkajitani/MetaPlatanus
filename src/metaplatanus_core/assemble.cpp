@@ -54,7 +54,7 @@ Assemble::Assemble()
     optionSingleArgs["-e"] = "";
     optionSingleArgs["-k"] = "0.25";
     optionSingleArgs["-K"] = "0.9";
-    optionSingleArgs["-s"] = "6";
+    optionSingleArgs["-s"] = "4";
     optionSingleArgs["-n"] = "0";
 
     optionSingleArgs["-c"] = "2";
