@@ -36,6 +36,7 @@ docker pull rkajitani/metaplatanus
 docker run -it -v $(pwd):/work -w /work rkajitani/metaplatanus
 # or run metaplatanus in one command
 docker run -v $(pwd):/work -w /work --rm rkajitani/metaplatanus metaplatanus ...
+```
 
 ### 3. Build from source
 Install the dependencies above.
