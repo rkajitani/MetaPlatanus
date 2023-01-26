@@ -649,7 +649,7 @@ _EOS
 	system("rm -r $tmp_dir");
 
 	($cmd_status != 0) and die "Error: $cmd_status binning (metabat2) error!\n$!\n";
-	system('touch done');
+	system("touch $work_dir/done");
 }
 
 
